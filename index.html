@@ -753,6 +753,19 @@ img.ava{object-fit:cover;display:block;
     </div>
   </div>
 
+  <div id="holdings" class="sec" style="padding-top:0"></div>
+
+</main>
+
+<!-- ===================== PERFIL ===================== -->
+
+
+</div>
+
+<!-- Hojas emergentes: van fuera de las vistas porque son position:fixed y
+     deben poder abrirse desde cualquier pantalla. Si viven dentro de un
+     <main> oculto, el display:none del padre las tapa aunque se les quite
+     la clase hidden. -->
   <div class="hoja hidden" id="hojaRecibir">
     <div class="hoja-in">
       <div class="hoja-bar"></div>
@@ -846,14 +859,6 @@ img.ava{object-fit:cover;display:block;
       <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
     </div>
   </div>
-  <div id="holdings" class="sec" style="padding-top:0"></div>
-
-</main>
-
-<!-- ===================== PERFIL ===================== -->
-
-
-</div>
 
 <!-- ===================== NAV ===================== -->
 <nav class="nav" id="nav">
@@ -872,7 +877,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b57';
+const BUILD = 'WL b58';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
