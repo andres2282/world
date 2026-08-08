@@ -362,12 +362,18 @@ img.ava{object-fit:cover;display:block;
   margin:16px 0 8px}
 .bloq{margin-top:9px;padding:7px 9px;border-radius:8px;font-size:11.5px;
   background:rgba(47,123,255,.08);border:1px solid rgba(47,123,255,.22);color:var(--lime)}
-.dots-wrap{position:relative;padding:0 14px 4px;display:flex;justify-content:flex-end}
-.dots{width:38px;height:38px;border-radius:50%;background:var(--panel-2);
-  border:1px solid var(--line);color:var(--text);font-size:19px;line-height:1}
-.menu{position:absolute;right:14px;top:44px;z-index:30;min-width:246px;padding:6px;
-  border-radius:12px;background:#0E1417;border:1px solid var(--line);
-  box-shadow:0 10px 30px rgba(0,0,0,.6)}
+/* Menu de acciones: flotante en la esquina de abajo, encima de la barra de
+   navegacion, para tenerlo siempre a mano sin desplazar. */
+.dots-wrap{position:fixed;right:14px;z-index:120;
+  bottom:calc(74px + env(safe-area-inset-bottom))}
+.dots{width:48px;height:48px;border-radius:50%;background:var(--lime);
+  border:0;color:#fff;font-size:22px;line-height:1;
+  box-shadow:0 6px 20px rgba(47,123,255,.42)}
+.dots:active{transform:scale(.94)}
+/* se abre hacia ARRIBA, que abajo no hay sitio */
+.menu{position:absolute;right:0;bottom:58px;z-index:30;min-width:250px;padding:6px;
+  border-radius:14px;background:#0E1420;border:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.7)}
 .menu button{display:flex;align-items:center;gap:8px;width:100%;padding:11px 10px;
   border-radius:8px;font-size:13px;text-align:left;color:var(--text)}
 .menu button i{margin-left:auto;font-style:normal;font-size:9px;letter-spacing:.1em;
@@ -599,7 +605,8 @@ img.ava{object-fit:cover;display:block;
   <div class="dots-wrap">
     <button class="dots hidden" id="dDots" onclick="toggleMenu()">&#8943;</button>
     <div class="menu hidden" id="dMenu">
-      <button onclick="abrirEditor()">&#9999;&#65039; Editar imagen y descripci&oacute;n</button>
+      <button onclick="abrirBloqueo()">&#128274; Bloquear mis tokens</button>
+      <button id="mEditar" onclick="abrirEditor()">&#9999;&#65039; Editar imagen y descripci&oacute;n</button>
       <button onclick="proximamente('Quemar tokens')">&#128293; Quemar tokens<i>PRONTO</i></button>
       <button onclick="proximamente('Estanque')">&#128167; Estanque<i>PRONTO</i></button>
       <button onclick="proximamente('Airdrop')">&#129666; Airdrop<i>PRONTO</i></button>
@@ -839,6 +846,37 @@ img.ava{object-fit:cover;display:block;
     </div>
   </div>
 
+  <div class="hoja hidden" id="hojaBloquear">
+    <div class="hoja-in">
+      <div class="hoja-bar"></div>
+      <h3>Bloquear mis tokens</h3>
+      <p class="hoja-p">Quedan en custodia y no se pueden mover hasta que venza
+        el plazo. Es la forma de demostrar que no vas a vender de golpe.</p>
+      <div class="fld">
+        <label>Cuántos <span id="bkSim"></span></label>
+        <input id="bkCant" type="text" inputmode="decimal" placeholder="0"
+               oninput="this.value=this.value.replace(',','.')">
+      </div>
+      <div class="chips" id="bkChips"></div>
+      <div class="fld">
+        <label>Por cuánto tiempo</label>
+        <select id="bkPlazo">
+          <option value="1">24 horas</option>
+          <option value="2">7 días</option>
+          <option value="3">15 días</option>
+          <option value="4" selected>1 mes</option>
+          <option value="5">3 meses</option>
+        </select>
+      </div>
+      <div class="hint" id="bkInfo" style="margin-bottom:12px"></div>
+      <button class="cta" id="bkBtn" onclick="confirmarBloqueo()">Bloquear</button>
+      <p class="nota">Esto no se puede deshacer. Ni tú ni nadie puede soltarlos
+        antes del plazo.</p>
+      <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
+      <div class="err-box hidden" id="bkErr"></div>
+    </div>
+  </div>
+
   <div class="hoja hidden" id="hojaDestacar">
     <div class="hoja-in">
       <div class="hoja-bar"></div>
@@ -900,7 +938,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b65';
+const BUILD = 'WL b66';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -2175,6 +2213,8 @@ function ir(v){
   // Perfil y Portafolio son una sola pantalla: la Billetera.
   if(v === 'perfil') v = 'portafolio';
   S.vista = v;
+  const dw = document.querySelector('.dots-wrap');
+  if(dw) dw.classList.toggle('hidden', v !== 'token');
   ['explorar','token','crear','portafolio'].forEach(x=>{
     const el = $('v-'+x); if(el) el.classList.toggle('hidden', x!==v);
   });
@@ -2461,7 +2501,10 @@ function abrirToken(sym){
   setLado('comprar');
   // el editor de metadatos solo lo ve el creador del token
   const esMio = S.conectado && t.creador && lc(t.creador) === lc(S.wallet);
-  $('dDots').classList.toggle('hidden', !esMio);
+  // El menu es para todos: bloquear tokens no es cosa solo del creador.
+  // Lo que se reserva al creador es editar la imagen y la descripcion.
+  $('dDots').classList.remove('hidden');
+  $('mEditar').classList.toggle('hidden', !esMio);
   $('dMenu').classList.add('hidden');
   $('dEditor').classList.add('hidden');
   ir('token');
@@ -2821,6 +2864,74 @@ function ajustarZoom(pre){
 
 // Editor de metadatos, solo para el creador del token
 function toggleMenu(){ $('dMenu').classList.toggle('hidden'); }
+
+// ---------- bloquear tokens que ya tienes ----------
+// El contrato lo permitia desde el principio; faltaba por donde pedirlo.
+// GekLock tiene permiso permanente sobre los GekToken, asi que no hace falta
+// approve: es una sola firma.
+function abrirBloqueo(){
+  $('dMenu').classList.add('hidden');
+  const t = S.actual;
+  if(!t) return;
+  if(!S.conectado) return conectarWallet();
+
+  const libre = S.saldoToken || 0;
+  $('bkSim').textContent = '$' + t.s;
+  $('bkErr').classList.add('hidden');
+  $('bkCant').value = '';
+
+  if(libre <= 0){
+    $('bkInfo').textContent = 'No tienes ' + t.s + ' disponibles para bloquear.';
+    $('bkBtn').disabled = true;
+  } else {
+    $('bkInfo').textContent = 'Disponibles: ' + fmt(libre, 0) + ' ' + t.s;
+    $('bkBtn').disabled = false;
+  }
+
+  $('bkChips').innerHTML = [25,50,75,100].map(v =>
+    `<button onclick="bkPorcentaje(${v})">${v}%</button>`).join('');
+  $('hojaBloquear').classList.remove('hidden');
+}
+
+function bkPorcentaje(v){
+  const libre = S.saldoToken || 0;
+  if(libre <= 0) return;
+  // se redondea hacia abajo para no pedir mas de lo que hay por decimales
+  const cant = Math.floor(libre * v / 100);
+  $('bkCant').value = String(cant);
+}
+
+async function confirmarBloqueo(){
+  const t = S.actual; if(!t) return;
+  const btn = $('bkBtn'), err = $('bkErr');
+  const cant  = num($('bkCant').value);
+  const plazo = parseInt($('bkPlazo').value, 10);
+  const libre = S.saldoToken || 0;
+
+  err.classList.add('hidden');
+  if(!(cant > 0))     { err.textContent = 'Escribe cuántos quieres bloquear'; err.classList.remove('hidden'); return; }
+  if(cant > libre)    { err.textContent = 'Solo tienes ' + fmt(libre,0) + ' ' + t.s; err.classList.remove('hidden'); return; }
+
+  const etiqueta = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Bloqueando…';
+  try{
+    const wei = ethers.parseUnits(String(cant), 18);
+    const ok = await enviarTx([{ to: lc(GEK_LOCK),
+      data: encodeCall(FN.lBloquear.sig, FN.lBloquear.types, [t.dir, wei, plazo]) }]);
+    if(ok){
+      toast('🔒 ' + fmt(cant,0) + ' ' + t.s + ' en custodia');
+      cerrarHojas();
+      await cargarTokens();
+      abrirToken(t.s);
+    } else {
+      err.textContent = 'No se pudo bloquear: ' + (S.ultimoError || 'sin detalle');
+      err.classList.remove('hidden');
+    }
+  }catch(e){
+    err.textContent = String(e.message || e);
+    err.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = etiqueta; }
+}
 function proximamente(q){
   $('dMenu').classList.add('hidden');
   toast(q + ' todavia no esta construido', 4000);
@@ -3220,6 +3331,7 @@ function cerrarHojas(){
   $('hojaRecibir').classList.add('hidden');
   const hd = $('hojaDestacar'); if(hd) hd.classList.add('hidden');
   const hp = $('hojaPerfil'); if(hp) hp.classList.add('hidden');
+  const hb = $('hojaBloquear'); if(hb) hb.classList.add('hidden');
   $('hojaEnviar').classList.add('hidden');
 }
 // Comisiones que le dejaron sus tokens. No hay contador on-chain de esto, asi
