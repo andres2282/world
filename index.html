@@ -219,6 +219,10 @@ img.ava{object-fit:cover;display:block;
 .dt-price .big{font-family:var(--mono);font-size:27px;font-weight:700}
 .chart{height:190px;margin:0 14px;border-radius:12px;background:var(--panel);
   border:1px solid var(--line);overflow:hidden}
+/* IMPRESCINDIBLE: sin esto el tamano del canvas lo fijan sus atributos y el
+   dibujado lo multiplica por el pixel ratio en cada repintado, creciendo sin
+   parar hasta que el grafico queda fuera del recuadro. */
+.chart canvas{display:block;width:100%;height:100%}
 .tfs{display:flex;gap:6px;padding:8px 14px 0;justify-content:center}
 .dt-info{padding:0 14px}
 .dt-info:empty{display:none}
@@ -645,6 +649,20 @@ img.ava{object-fit:cover;display:block;
     <div class="chips" id="chips"></div>
     <div class="recv"><span id="dispo"></span><b id="recibe"></b></div>
     <div class="recv"><span>Recibes aprox.</span><b id="recibe2">—</b></div>
+    <div class="fld" id="lockBox" style="margin:12px 0 0">
+      <label>Bloquear lo que compres</label>
+      <select id="tLock">
+        <option value="0">No bloquear — disponible al instante</option>
+        <option value="1">24 horas</option>
+        <option value="2">7 días</option>
+        <option value="3">15 días</option>
+        <option value="4">1 mes</option>
+        <option value="5">3 meses</option>
+      </select>
+      <div class="hint" style="margin-top:6px">Bloquear es voluntario y demuestra
+        a los demás que no vas a vender de golpe. Una vez bloqueado no se puede
+        soltar antes del plazo, ni por ti ni por nadie.</div>
+    </div>
     <button class="cta" id="tradeBtn" onclick="ejecutarTrade()">Comprar</button>
     <p class="nota" style="text-align:center;margin-top:10px">
       Contratos sin auditar. Compra solo lo que estés dispuesto a perder.</p>
@@ -882,7 +900,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b63';
+const BUILD = 'WL b65';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -1025,6 +1043,8 @@ const FN = {
   bloqueadoDeUsuario: { sig:'bloqueadoDe(address,address)', types:['address','address'] },
   reclamable:   { sig:'reclamableDe(address,address)', types:['address','address'] },
   reclamarTodo: { sig:'reclamarTodo(address)',        types:['address'] },
+  lBloquear:    { sig:'bloquear(address,uint256,uint8)',
+                  types:['address','uint256','uint8'] },
   transferir:   { sig:'transfer(address,uint256)',    types:['address','uint256'] },
   // FlickBondingCurve
   // Comprar y vender pasan por el router: la curva tiene dirección nueva en
@@ -1062,6 +1082,19 @@ const FN = {
   simbolo:      { sig:'symbol()',                     types:[] },
   saldo:        { sig:'balanceOf(address)',            types:['address'] },
 };
+
+// Precios muy chicos en notacion legible: 0.000001234 -> 0.0₅1234
+function precioCorto(v){
+  if(!isFinite(v) || v <= 0) return '0';
+  if(v >= 1)    return v.toFixed(2);
+  if(v >= 0.01) return v.toFixed(4);
+  const exp = Math.floor(Math.log10(v));
+  const ceros = -exp - 1;
+  const digs = Math.round(v * Math.pow(10, ceros + 4)).toString().slice(0,4);
+  return ceros >= 4 ? '0.0' + sub(ceros) + digs : v.toFixed(Math.min(8, ceros + 4));
+}
+const SUB = '\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089';
+const sub = n => String(n).split('').map(d => SUB[+d]).join('');
 
 // Tolerancia de slippage por defecto (1%).
 const SLIPPAGE = 0.01;
@@ -2339,7 +2372,7 @@ function pintarLista(){
           <div class="sub">$${t.s}${t.desc ? ' · '+desempacarDesc(t.desc).d.slice(0,40) : ''}</div>
         </div>
         <div class="tk-pr">
-          <div class="p">${t.p.toFixed(6)}</div>
+          <div class="p">${precioCorto(t.p)}</div>
           <div class="d ${t.ch>=0?'up':'down'}">${t.ch>=0?'+':''}${t.ch.toFixed(1)}%</div>
         </div>
       </div>
@@ -2394,7 +2427,7 @@ function abrirToken(sym){
                    ' + <b>1% plataforma</b>';
     cm.classList.remove('hidden');
   } else { cm.classList.add('hidden'); }
-  $('dPrice').textContent = t.p.toFixed(6)+' WLD';
+  $('dPrice').textContent = precioCorto(t.p)+' WLD';
   const chg = $('dChg');
   chg.textContent = (t.ch>=0?'+':'')+t.ch.toFixed(1)+'%';
   chg.className = 'num ' + (t.ch>=0?'up':'down');
@@ -2597,22 +2630,11 @@ function dibujarChart(t){
   }
 }
 
-// Precios muy chicos en notacion legible: 0.000001234 -> 0.0₅1234
-function precioCorto(v){
-  if(!isFinite(v) || v <= 0) return '0';
-  if(v >= 1)    return v.toFixed(2);
-  if(v >= 0.01) return v.toFixed(4);
-  const exp = Math.floor(Math.log10(v));
-  const ceros = -exp - 1;
-  const digs = Math.round(v * Math.pow(10, ceros + 4)).toString().slice(0,4);
-  return ceros >= 4 ? '0.0' + sub(ceros) + digs : v.toFixed(Math.min(8, ceros + 4));
-}
-const SUB = '\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089';
-const sub = n => String(n).split('').map(d => SUB[+d]).join('');
 
 function setLado(l){
   S.lado = l;
   const comprando = l==='comprar';
+  const lb = $('lockBox'); if(lb) lb.classList.toggle('hidden', !comprando);
   $('segBuy').classList.toggle('on', comprando);
   $('segSell').classList.toggle('on', !comprando);
   $('segSell').classList.toggle('sell', !comprando);
@@ -2686,6 +2708,17 @@ async function ejecutarTrade(){
                  data: encodeCall(FN.aprobar.sig, FN.aprobar.types, [GEK_ROUTER, wei]) });
       txs.push({ to: lc(GEK_ROUTER),
                  data: encodeCall(FN.rComprar.sig, FN.rComprar.types, [t.curva, wei, minimo]) });
+
+      // Bloqueo voluntario, en la MISMA firma que la compra. Se bloquea el
+      // minimo garantizado y no la cotizacion: si el precio se mueve entre la
+      // firma y la ejecucion, bloquear mas de lo recibido haria fallar todo.
+      // Lo que sobre queda disponible.
+      const plazo = parseInt(($('tLock')||{}).value || '0', 10);
+      if(plazo > 0){
+        txs.push({ to: lc(GEK_LOCK),
+                   data: encodeCall(FN.lBloquear.sig, FN.lBloquear.types,
+                                    [t.dir, minimo, plazo]) });
+      }
     } else {
       txs.push({ to: lc(GEK_ROUTER),
                  data: encodeCall(FN.rVender.sig, FN.rVender.types, [t.curva, wei, minimo]) });
@@ -2693,7 +2726,10 @@ async function ejecutarTrade(){
 
     const ok = await enviarTx(txs);
     if(ok){
-      toast(S.lado==='comprar' ? '✅ Compra hecha' : '✅ Venta hecha');
+      const plazoElegido = S.lado==='comprar'
+        ? parseInt(($('tLock')||{}).value || '0', 10) : 0;
+      toast(S.lado!=='comprar' ? '✅ Venta hecha'
+            : plazoElegido > 0 ? '✅ Compra hecha y bloqueada' : '✅ Compra hecha');
       $('amt').value=''; calcRecibe();
       await cargarTokens();
       await refrescarDestacados();
