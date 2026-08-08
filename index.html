@@ -863,7 +863,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b52';
+const BUILD = 'WL b53';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -884,37 +884,61 @@ let   WORLD_CHAIN_RPC = RPCS[0];
 let   RPC_LOGS = null;
 let   _rpcFallos = 0;
 
-// Prueba todos y se queda con el primero que responda un numero de bloque.
+// Prueba los RPC EN PARALELO y se queda con el primero que devuelva un dato
+// util. Antes iba uno por uno esperando hasta 5 s cada vez: si el primero
+// estaba lento, el arranque entero se comia esa espera. Ahora la app arranca
+// a la velocidad del RPC mas rapido, no del mas lento.
+//
+// El orden sigue importando: si varios contestan dentro de la misma ventana
+// corta, gana el que este mas arriba en la lista, porque algunos responden
+// rapido pero devuelven datos incompletos en eth_call.
 async function elegirRPC(){
-  // En orden de preferencia, no el mas rapido: algunos RPC responden rapido
-  // pero devuelven datos incompletos en eth_call.
-  log('probando ' + RPCS.length + ' RPC...');
+  log('probando ' + RPCS.length + ' RPC en paralelo...');
   const errores = [];
-  for(const url of RPCS){
+  const datos = ethers.id('totalTokensCreated()').slice(0,10);
+
+  const probar = (url, i) => new Promise(async (ok, falla) => {
     try{
       const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 5000);
+      const t = setTimeout(()=>ctrl.abort(), 4000);
       const r = await fetch(url, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{
-          to: lc(GEK_FACTORY),
-          data: ethers.id('totalTokensCreated()').slice(0,10)
-        },'latest']}),
+        body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',
+                              params:[{ to: lc(GEK_FACTORY), data: datos },'latest']}),
         signal: ctrl.signal
       });
       clearTimeout(t);
       const j = await r.json();
-      // tiene que devolver un dato util, no solo responder
       if(!j.result || j.result === '0x') throw new Error((j.error&&j.error.message)||'sin datos');
-      WORLD_CHAIN_RPC = url;
-      S.rpcUsado = url.split('/')[2];
-      log('RPC activo: ' + S.rpcUsado);
-      return true;
-    }catch(e){ errores.push(url.split('/')[2] + ': ' + (e.message||e)); }
+      ok({ url, i });
+    }catch(e){
+      errores.push(url.split('/')[2] + ': ' + (e.message||e));
+      falla(e);
+    }
+  });
+
+  try{
+    const primero = await Promise.any(RPCS.map(probar));
+
+    // margen corto para que un RPC mas confiable de la lista pueda ganarle
+    const mejor = await new Promise(res => {
+      let elegido = primero;
+      RPCS.forEach((u, i) => {
+        if(i >= primero.i) return;
+        probar(u, i).then(r => { if(r.i < elegido.i) elegido = r; }).catch(()=>{});
+      });
+      setTimeout(() => res(elegido), 350);
+    });
+
+    WORLD_CHAIN_RPC = mejor.url;
+    S.rpcUsado = mejor.url.split('/')[2];
+    log('RPC activo: ' + S.rpcUsado);
+    return true;
+  }catch(e){
+    S.rpcError = 'Ningun RPC respondio. ' + errores.join(' | ');
+    log(S.rpcError, true);
+    return false;
   }
-  S.rpcError = 'Ningun RPC respondio. ' + errores.join(' | ');
-  log(S.rpcError, true);
-  return false;
 }
 
 const CHAIN_ID          = 480;
@@ -1624,7 +1648,7 @@ function panelPoseedores(t, cont){
    ------------------------------------------------------------------ */
 const TOPIC_COMPRA = 'Compra(address,address,uint256,uint256)';
 const TOPIC_VENTA  = 'Venta(address,address,uint256,uint256)';
-const VENTANA_BLOQUES = 900;   // el RPC permite 1000 como maximo
+const VENTANA_BLOQUES = 1000;  // el maximo que admite el RPC: menos tramos, menos vueltas
 let _ultimoBloqueVisto = 0;
 
 async function bloqueActual(){
@@ -1730,7 +1754,9 @@ async function barrer(desde, hasta, maxPeticiones, avisar){
   }
   if(maxPeticiones && tramos.length > maxPeticiones) tramos.splice(0, tramos.length - maxPeticiones);
   // Menos peticiones a la vez: en paralelo agresivo el RPC empieza a rechazar.
-  const EN_PARALELO = 3;
+  // Con los reintentos por tramo ya se puede pedir de a mas sin que un rechazo
+  // suelto rompa el barrido: es lo que hace que la lectura se sienta rapida.
+  const EN_PARALELO = 6;
   let ops = [], hechos = 0, fallos = 0, primerError = null;
   for(let i = 0; i < tramos.length; i += EN_PARALELO){
     const tanda = tramos.slice(i, i + EN_PARALELO);
@@ -1740,7 +1766,7 @@ async function barrer(desde, hasta, maxPeticiones, avisar){
     hechos += tanda.length;
     if(avisar) avisar(hechos, tramos.length, ops);
     // pequena pausa entre tandas: los RPC gratis miden peticiones por segundo
-    if(i + EN_PARALELO < tramos.length) await new Promise(r => setTimeout(r, 180));
+    if(i + EN_PARALELO < tramos.length) await new Promise(r => setTimeout(r, 60));
   }
   // si fallo mas de la mitad, el resultado no es de fiar: se avisa
   if(primerError && fallos > tramos.length / 2){
@@ -2967,55 +2993,72 @@ function cerrarHojas(){
   const hp = $('hojaPerfil'); if(hp) hp.classList.add('hidden');
   $('hojaEnviar').classList.add('hidden');
 }
-// Comisiones que le dejaron sus tokens. No hay ningun contador on-chain de
-// esto, asi que se calcula: volumen real de cada curva por el porcentaje que
-// el creador eligio para ese token.
+// Comisiones que le dejaron sus tokens. No hay contador on-chain de esto, asi
+// que se calcula: volumen de cada curva por el porcentaje que el creador
+// eligio para ese token.
 //
-// Va detras de un boton a proposito, porque exige barrer la cadena igual que
-// el historial de un token, y no vale hacerlo en cada pintada.
-//
-// OJO: el barrido cubre los ultimos ~45.000 bloques (unas 24 h). NO es el
-// total historico, y la etiqueta lo dice para que no se lea como si lo fuera.
-async function calcularComisiones(){
+// El total se GUARDA en el telefono junto con el ultimo bloque leido, y en las
+// siguientes veces solo se leen los bloques nuevos. Por eso la primera vez
+// tarda y despues sale al instante — y ademas el total va creciendo de verdad
+// en vez de quedarse en las ultimas 24 h.
+const COMIS_CLAVE = 'wl.comisiones.';
+
+function comisLeer(wallet){
+  try{ return JSON.parse(localStorage.getItem(COMIS_CLAVE + lc(wallet))) || null; }
+  catch(e){ return null; }
+}
+function comisGuardar(wallet, datos){
+  try{ localStorage.setItem(COMIS_CLAVE + lc(wallet), JSON.stringify(datos)); }catch(e){}
+}
+function comisPintar(total, parcial){
   const caja = $('pFees');
   if(!caja) return;
+  caja.innerHTML = fmt(total, 4) + ' WLD'
+    + (parcial ? '<span style="display:block;font-size:10px;font-weight:400;color:var(--dim);'
+                 + 'letter-spacing:.04em;margin-top:3px">actualizando…</span>' : '');
+}
+
+let _comisCorriendo = false;
+
+async function calcularComisiones(){
+  const caja = $('pFees');
+  if(!caja || _comisCorriendo) return;
   const mios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
   if(!mios.length){ caja.textContent = '0 WLD'; return; }
 
-  caja.dataset.hecho = '1';
-  caja.textContent = 'leyendo…';
+  // 1) lo guardado se muestra de una, sin esperar a la red
+  const guardado = comisLeer(S.wallet);
+  let total  = guardado ? guardado.total : 0;
+  let ultimo = guardado ? guardado.bloque : 0;
+  comisPintar(total, true);
+
+  _comisCorriendo = true;
   try{
-    const ultimo = parseInt((await rpcFetch({jsonrpc:'2.0',id:1,
-                    method:'eth_blockNumber',params:[]})).result, 16);
-    const desde = Math.max(ROUTER_BLOQUE_0, ultimo - HISTORIA_MAX);
+    const ahora = parseInt((await rpcFetch({jsonrpc:'2.0',id:1,
+                   method:'eth_blockNumber',params:[]})).result, 16);
 
-    const todas = await barrer(desde, ultimo, 400, (hechos, total) => {
-      caja.textContent = Math.round(hechos/total*100) + '%';
-    });
+    // 2) solo lo nuevo desde la ultima vez
+    const desde = ultimo ? ultimo + 1 : Math.max(ROUTER_BLOQUE_0, ahora - HISTORIA_MAX);
+    if(desde > ahora){ comisPintar(total, false); return; }
 
-    // volumen en WLD por curva
-    const porCurva = {};
-    for(const op of todas){
-      const c = lc(op.curva);
-      porCurva[c] = (porCurva[c] || 0) + (op.wld || 0);
-    }
-
-    let total = 0;
+    // el porcentaje de cada token se lee una sola vez
+    const bps = {};
     await Promise.all(mios.map(async t => {
-      const vol = porCurva[lc(t.curva)] || 0;
-      if(!vol) return;
       const r = await leer(GEK_FACTORY, 'comisionDe', [t.dir], ['uint16']);
-      if(!r) return;
-      total += vol * Number(r[0]) / 10000;
+      if(r) bps[lc(t.curva)] = Number(r[0]);
     }));
 
-    caja.innerHTML = fmt(total, 4) + ' WLD'
-      + '<span style="display:block;font-size:10px;font-weight:400;color:var(--dim);'
-      + 'letter-spacing:.04em;margin-top:3px">ultimas ~24 h, estimado</span>';
+    const nuevas = await barrer(desde, ahora, 400);
+    for(const op of nuevas){
+      const b = bps[lc(op.curva)];
+      if(b) total += (op.wld || 0) * b / 10000;
+    }
+
+    comisGuardar(S.wallet, { total, bloque: ahora });
+    comisPintar(total, false);
   }catch(e){
-    caja.innerHTML = '<button class="mini-btn" onclick="calcularComisiones()">Reintentar</button>';
-    caja.dataset.hecho = '';
-  }
+    comisPintar(total, false);
+  } finally { _comisCorriendo = false; }
 }
 
 function abrirPerfil(){
@@ -3242,12 +3285,7 @@ function pintarPerfil(){
   $('pAddr').textContent = corto(S.wallet);
   const mios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
   $('pCreated').textContent = mios.length;
-  const cf = $('pFees');
-  if(cf && !cf.dataset.hecho){
-    cf.innerHTML = mios.length
-      ? '<button class="mini-btn" onclick="calcularComisiones()">Calcular</button>'
-      : '0 WLD';
-  }
+  calcularComisiones();
 
   $('pBadges').innerHTML = (mios.length ? ['🚀 Creador'] : ['🌱 Nuevo por aquí'])
     .map(b=>`<span class="badge">${b}</span>`).join('');
