@@ -254,6 +254,14 @@ img.ava{object-fit:cover;display:block;
 .fld{margin-bottom:14px}
 .fld label{display:block;font-size:11px;letter-spacing:.1em;color:var(--dim);
   text-transform:uppercase;margin-bottom:6px}
+.mini-btn{padding:6px 12px;border-radius:8px;background:var(--panel-2);
+  border:1px solid var(--line);color:var(--lime);font-size:13px;font-weight:700;
+  font-family:var(--ui);cursor:pointer}
+.cerrar-x{position:sticky;top:0;float:right;z-index:5;width:34px;height:34px;
+  margin:-6px -2px 0 0;border-radius:50%;background:var(--panel-2);
+  border:1px solid var(--line);color:var(--text);font-size:22px;line-height:1;
+  display:grid;place-items:center;cursor:pointer}
+.cerrar-x:active{background:var(--line)}
 .yo{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;margin-bottom:14px;
   background:var(--panel);border:1px solid var(--line);border-radius:999px;cursor:pointer}
 .yo .ava{width:32px;height:32px;font-size:14px;flex:none}
@@ -752,6 +760,7 @@ img.ava{object-fit:cover;display:block;
   <div class="hoja hidden" id="hojaPerfil">
     <div class="hoja-in" style="max-height:88vh;overflow-y:auto">
       <div class="hoja-bar"></div>
+      <button class="cerrar-x" onclick="cerrarHojas()" aria-label="Cerrar">&times;</button>
 
   <div class="prof">
     <div class="ava" id="pAva">F</div>
@@ -854,7 +863,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b51';
+const BUILD = 'WL b52';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -2958,6 +2967,57 @@ function cerrarHojas(){
   const hp = $('hojaPerfil'); if(hp) hp.classList.add('hidden');
   $('hojaEnviar').classList.add('hidden');
 }
+// Comisiones que le dejaron sus tokens. No hay ningun contador on-chain de
+// esto, asi que se calcula: volumen real de cada curva por el porcentaje que
+// el creador eligio para ese token.
+//
+// Va detras de un boton a proposito, porque exige barrer la cadena igual que
+// el historial de un token, y no vale hacerlo en cada pintada.
+//
+// OJO: el barrido cubre los ultimos ~45.000 bloques (unas 24 h). NO es el
+// total historico, y la etiqueta lo dice para que no se lea como si lo fuera.
+async function calcularComisiones(){
+  const caja = $('pFees');
+  if(!caja) return;
+  const mios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
+  if(!mios.length){ caja.textContent = '0 WLD'; return; }
+
+  caja.dataset.hecho = '1';
+  caja.textContent = 'leyendo…';
+  try{
+    const ultimo = parseInt((await rpcFetch({jsonrpc:'2.0',id:1,
+                    method:'eth_blockNumber',params:[]})).result, 16);
+    const desde = Math.max(ROUTER_BLOQUE_0, ultimo - HISTORIA_MAX);
+
+    const todas = await barrer(desde, ultimo, 400, (hechos, total) => {
+      caja.textContent = Math.round(hechos/total*100) + '%';
+    });
+
+    // volumen en WLD por curva
+    const porCurva = {};
+    for(const op of todas){
+      const c = lc(op.curva);
+      porCurva[c] = (porCurva[c] || 0) + (op.wld || 0);
+    }
+
+    let total = 0;
+    await Promise.all(mios.map(async t => {
+      const vol = porCurva[lc(t.curva)] || 0;
+      if(!vol) return;
+      const r = await leer(GEK_FACTORY, 'comisionDe', [t.dir], ['uint16']);
+      if(!r) return;
+      total += vol * Number(r[0]) / 10000;
+    }));
+
+    caja.innerHTML = fmt(total, 4) + ' WLD'
+      + '<span style="display:block;font-size:10px;font-weight:400;color:var(--dim);'
+      + 'letter-spacing:.04em;margin-top:3px">ultimas ~24 h, estimado</span>';
+  }catch(e){
+    caja.innerHTML = '<button class="mini-btn" onclick="calcularComisiones()">Reintentar</button>';
+    caja.dataset.hecho = '';
+  }
+}
+
 function abrirPerfil(){
   if(!S.conectado) return conectarWallet();
   pintarPerfil();
@@ -3182,6 +3242,12 @@ function pintarPerfil(){
   $('pAddr').textContent = corto(S.wallet);
   const mios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
   $('pCreated').textContent = mios.length;
+  const cf = $('pFees');
+  if(cf && !cf.dataset.hecho){
+    cf.innerHTML = mios.length
+      ? '<button class="mini-btn" onclick="calcularComisiones()">Calcular</button>'
+      : '0 WLD';
+  }
 
   $('pBadges').innerHTML = (mios.length ? ['🚀 Creador'] : ['🌱 Nuevo por aquí'])
     .map(b=>`<span class="badge">${b}</span>`).join('');
