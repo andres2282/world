@@ -254,6 +254,13 @@ img.ava{object-fit:cover;display:block;
 .fld{margin-bottom:14px}
 .fld label{display:block;font-size:11px;letter-spacing:.1em;color:var(--dim);
   text-transform:uppercase;margin-bottom:6px}
+.yo{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;margin-bottom:14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.yo .ava{width:32px;height:32px;font-size:14px;flex:none}
+.yo span{font-weight:700;font-size:14px;color:var(--text);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.yo i{margin-left:auto;color:var(--dim);font-style:normal;font-size:18px}
+.yo:active{background:var(--panel-2)}
 .fld input,.fld textarea,.fld select{width:100%;padding:12px;border-radius:10px;background:var(--panel);
   border:1px solid var(--line);color:var(--text);outline:none}
 .fld input:focus,.fld textarea:focus,.fld select:focus{border-color:var(--lime)}
@@ -715,6 +722,11 @@ img.ava{object-fit:cover;display:block;
 <!-- ===================== PORTAFOLIO ===================== -->
 <main id="v-portafolio" class="hidden">
   <div class="pf-head">
+    <button class="yo" onclick="abrirPerfil()">
+      <div class="ava" id="yoAva">W</div>
+      <span id="yoNom">Sin conectar</span>
+      <i>›</i>
+    </button>
     <p class="pf-label">Valor total</p>
     <h1 class="pf-total" id="pnlTotal">—</h1>
     <p class="pf-sub" id="pnlSub"></p>
@@ -733,6 +745,43 @@ img.ava{object-fit:cover;display:block;
         World Chain aquí; desde otra red se pierden.</p>
       <div class="addr-box" id="miAddr"></div>
       <button class="cta" onclick="copiarAddr()">Copiar dirección</button>
+      <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="hoja hidden" id="hojaPerfil">
+    <div class="hoja-in" style="max-height:88vh;overflow-y:auto">
+      <div class="hoja-bar"></div>
+
+  <div class="prof">
+    <div class="ava" id="pAva">F</div>
+    <h1 id="pName">Sin conectar</h1>
+    <div class="addr" id="pAddr">Conecta tu wallet para ver tu perfil</div>
+    <div class="badges" id="pBadges"></div>
+  </div>
+  <div class="sec"><div class="sec-hd"><h2>Panel de creador</h2></div>
+    <div class="grid2" style="padding:0">
+      <div class="stat"><span>Tokens creados</span><b id="pCreated">0</b></div>
+      <div class="stat"><span>Comisiones ganadas</span><b id="pFees">0 WLD</b></div>
+    </div>
+  </div>
+  <div class="soon">
+    <h3>🪂 Airdrop</h3>
+    <p>Próximamente.</p>
+  </div>
+  <p style="text-align:center;font-family:var(--mono);font-size:10.5px;
+            color:#3E4A46;margin:6px 0 0" id="pBuild"></p>
+  <div style="padding:14px">
+    <button class="edit-btn" onclick="diagnostico()">&#128295; Probar conexión</button>
+    <div id="diag" class="diag hidden"></div>
+    <div class="fld" style="margin-top:14px">
+      <label>Analizar un token de World Chain</label>
+      <input id="anaDir" placeholder="0x… dirección del contrato">
+    </div>
+    <button class="edit-btn" onclick="analizarToken()">&#128269; Buscar sus pools</button>
+    <div id="anaOut" class="diag hidden"></div>
+  </div>
+  <div style="height:20px"></div>
       <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
     </div>
   </div>
@@ -781,39 +830,6 @@ img.ava{object-fit:cover;display:block;
   </div>
   <div id="holdings" class="sec" style="padding-top:0"></div>
 
-  <div class="sec" style="margin-top:6px">
-    <div class="sec-hd"><h2>Tu cuenta</h2></div>
-  </div>
-
-  <div class="prof">
-    <div class="ava" id="pAva">F</div>
-    <h1 id="pName">Sin conectar</h1>
-    <div class="addr" id="pAddr">Conecta tu wallet para ver tu perfil</div>
-    <div class="badges" id="pBadges"></div>
-  </div>
-  <div class="sec"><div class="sec-hd"><h2>Panel de creador</h2></div>
-    <div class="grid2" style="padding:0">
-      <div class="stat"><span>Tokens creados</span><b id="pCreated">0</b></div>
-      <div class="stat"><span>Comisiones ganadas</span><b id="pFees">0 WLD</b></div>
-    </div>
-  </div>
-  <div class="soon">
-    <h3>🪂 Airdrop</h3>
-    <p>Próximamente.</p>
-  </div>
-  <p style="text-align:center;font-family:var(--mono);font-size:10.5px;
-            color:#3E4A46;margin:6px 0 0" id="pBuild"></p>
-  <div style="padding:14px">
-    <button class="edit-btn" onclick="diagnostico()">&#128295; Probar conexión</button>
-    <div id="diag" class="diag hidden"></div>
-    <div class="fld" style="margin-top:14px">
-      <label>Analizar un token de World Chain</label>
-      <input id="anaDir" placeholder="0x… dirección del contrato">
-    </div>
-    <button class="edit-btn" onclick="analizarToken()">&#128269; Buscar sus pools</button>
-    <div id="anaOut" class="diag hidden"></div>
-  </div>
-  <div style="height:20px"></div>
 </main>
 
 <!-- ===================== PERFIL ===================== -->
@@ -838,7 +854,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b50';
+const BUILD = 'WL b51';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -985,6 +1001,8 @@ const FN = {
   buscarPool:   { sig:'getPool(address,address,uint24)',
                   types:['address','address','uint24'] },
   liquidez:     { sig:'liquidity()',                  types:[] },
+  slot0:        { sig:'slot0()',                      types:[] },
+  token0:       { sig:'token0()',                     types:[] },
   decimales:    { sig:'decimals()',                   types:[] },
   nombre:       { sig:'name()',                       types:[] },
   simbolo:      { sig:'symbol()',                     types:[] },
@@ -1762,6 +1780,56 @@ function arrancarFeed(){
 // Revisa un token cualquiera de World Chain: qué es, y si tiene pool en
 // Uniswap contra WLD, USDC, WETH o WBTC. Sin pool no se puede comprar ni
 // vender, por muy bien que esté el contrato.
+// ---------- precios en dolares ----------
+// Se leen del pool de Uniswap contra USDC, que es lo mas parecido a un dolar
+// que hay en la cadena. Sin servidor ni API de terceros.
+async function precioContraUSDC(token, decToken){
+  for(const com of [500, 3000, 100, 10000]){
+    try{
+      const r = await leer(UNIV3_FACTORY, 'buscarPool',
+                           [token, USDC_ADDRESS, com], ['address']);
+      const pool = r && r[0];
+      if(!pool || /^0x0{40}$/i.test(pool)) continue;
+
+      const [s0, t0] = await Promise.all([
+        leer(pool, 'slot0',  [], ['uint160','int24','uint16','uint16','uint16','uint8','bool']),
+        leer(pool, 'token0', [], ['address']),
+      ]);
+      if(!s0 || !t0) continue;
+
+      const sqrtP = Number(s0[0]) / 2**96;
+      if(!isFinite(sqrtP) || sqrtP <= 0) continue;
+      const ratio = sqrtP * sqrtP;          // token1 por token0, en unidades minimas
+
+      // ordenar segun quien sea token0 y ajustar los decimales de cada uno
+      const tokenEsCero = lc(t0[0]) === lc(token);
+      const precio = tokenEsCero
+        ? ratio * 10 ** (decToken - 6)      // token -> USDC
+        : (1 / ratio) * 10 ** (decToken - 6);
+      if(isFinite(precio) && precio > 0) return precio;
+    }catch(e){ /* se prueba la siguiente comision */ }
+  }
+  return 0;
+}
+
+// Precios que la billetera necesita. Se guardan en memoria por unos minutos
+// para no repetir la lectura en cada pintada.
+async function cargarPrecios(){
+  const ahora = Date.now();
+  if(S.precios && ahora - S.precios.cuando < 3*60*1000) return S.precios;
+  const [wld, eth] = await Promise.all([
+    precioContraUSDC(WLD_TOKEN_ADDRESS, 18),
+    precioContraUSDC(WETH_ADDRESS, 18),
+  ]);
+  S.precios = { wld, eth, cuando: ahora };
+  return S.precios;
+}
+
+const usd = v => (v >= 1000 ? '$' + fmt(v,2)
+               : v >= 1     ? '$' + fmt(v,2)
+               : v > 0      ? '$' + v.toFixed(v < 0.01 ? 4 : 3)
+                            : '$0.00');
+
 async function analizarToken(){
   const caja = $('anaOut');
   const dir  = ($('anaDir').value || '').trim();
@@ -2887,8 +2955,15 @@ async function tokensExternos(){
 function cerrarHojas(){
   $('hojaRecibir').classList.add('hidden');
   const hd = $('hojaDestacar'); if(hd) hd.classList.add('hidden');
+  const hp = $('hojaPerfil'); if(hp) hp.classList.add('hidden');
   $('hojaEnviar').classList.add('hidden');
 }
+function abrirPerfil(){
+  if(!S.conectado) return conectarWallet();
+  pintarPerfil();
+  $('hojaPerfil').classList.remove('hidden');
+}
+
 function abrirRecibir(){
   if(!S.conectado) return conectarWallet();
   $('miAddr').textContent = S.wallet;
@@ -3001,10 +3076,24 @@ async function pintarPortafolio(){
   // el total solo suma lo que se puede valorar de verdad
   const enTokens = mios.reduce((a,f) => a + f.valor, 0);
   const totalWld = wld + enTokens;
-  $('pnlTotal').textContent = fmt(totalWld, 3) + ' WLD';
-  const sub = $('pnlSub');
-  if(sub) sub.textContent = fmt(wld,3) + ' en WLD  ·  ' + fmt(enTokens,3) + ' en tokens'
-    + (otros.length ? '  ·  ' + otros.length + ' token(s) sin precio' : '');
+
+  // Todo se muestra en dolares: es lo que la gente entiende. El WLD y el ETH
+  // se valoran con su pool contra USDC, y los tokens de la curva via WLD.
+  const px = await cargarPrecios();
+  const totalUsd = totalWld * px.wld + usdc + (eth + weth) * px.eth;
+
+  if(px.wld > 0){
+    $('pnlTotal').textContent = usd(totalUsd);
+    const sub = $('pnlSub');
+    if(sub) sub.textContent = fmt(totalWld,3) + ' WLD  ·  1 WLD = ' + usd(px.wld)
+      + (otros.length ? '  ·  ' + otros.length + ' token(s) sin precio' : '');
+  } else {
+    // si no se pudo leer el precio, no se inventa: se muestra en WLD
+    $('pnlTotal').textContent = fmt(totalWld, 3) + ' WLD';
+    const sub = $('pnlSub');
+    if(sub) sub.textContent = 'sin precio en dolares ahora mismo'
+      + (otros.length ? '  ·  ' + otros.length + ' token(s) sin precio' : '');
+  }
 
   if(!wld && !usdc && !weth && !eth && !mios.length && !otros.length){
     cont.innerHTML = `<div class="empty"><h3>Wallet vacia</h3>
@@ -3026,16 +3115,18 @@ async function pintarPortafolio(){
   let html = '';
 
   const basicos = [
-    { on: wld  > 0,       s:'WLD',  n:'World',         c:fmt(wld,3),          bg:'#fff',    fg:'#000' },
-    { on: eth  > 0,       s:'ETH',  n:'Ethereum',      c:fmt(eth,5),          bg:'#627EEA', fg:'#fff' },
-    { on: weth > 0,       s:'WETH', n:'Wrapped Ether', c:fmt(weth,5),         bg:'#3C4A7A', fg:'#fff' },
-    { on: usdc > 0,       s:'USDC', n:'USD Coin',      c:fmt(usdc,2),         bg:'#2775CA', fg:'#fff' },
+    { on: wld  > 0, s:'WLD',  n:'World',         c:fmt(wld,3),  v:wld*px.wld,  bg:'#fff',    fg:'#000' },
+    { on: eth  > 0, s:'ETH',  n:'Ethereum',      c:fmt(eth,5),  v:eth*px.eth,  bg:'#627EEA', fg:'#fff' },
+    { on: weth > 0, s:'WETH', n:'Wrapped Ether', c:fmt(weth,5), v:weth*px.eth, bg:'#3C4A7A', fg:'#fff' },
+    { on: usdc > 0, s:'USDC', n:'USD Coin',      c:fmt(usdc,2), v:usdc,        bg:'#2775CA', fg:'#fff' },
   ].filter(x => x.on);
 
   if(basicos.length){
     html += basicos.map(x => fila(
       `<div class="ava" style="background:${x.bg};color:${x.fg};font-size:15px">${x.s[0]}</div>`,
-      x.s, x.n, x.c, x.s)).join('');
+      x.s, x.n,
+      x.v > 0 ? usd(x.v) : x.c,
+      x.v > 0 ? x.c + ' ' + x.s : x.s)).join('');
   }
 
   if(mios.length){
@@ -3046,8 +3137,8 @@ async function pintarPortafolio(){
           ${avatar(f.t)}
           <div class="tk-id"><h3>${f.t.n}</h3>
             <div class="sub">${fmt(f.total,0)} $${f.t.s}</div></div>
-          <div class="tk-pr"><div class="p">${fmt(f.valor,4)}</div>
-            <div class="d" style="color:var(--dim)">WLD</div></div>
+          <div class="tk-pr"><div class="p">${px.wld > 0 ? usd(f.valor*px.wld) : fmt(f.valor,4)}</div>
+            <div class="d" style="color:var(--dim)">${px.wld > 0 ? fmt(f.valor,3)+' WLD' : 'WLD'}</div></div>
         </div>
         ${f.bloq > 0 ? `<div class="bloq">&#128274; ${fmt(f.bloq,0)} en custodia`
           + (f.libre > 0 ? ` &middot; ${fmt(f.libre,0)} disponibles` : '') + `</div>` : ''}
@@ -3072,6 +3163,14 @@ async function pintarPortafolio(){
 function pintarPerfil(){
   const b = $('pBuild');
   if(b) b.textContent = BUILD + (S.rpcUsado ? ' · ' + S.rpcUsado : '');
+
+  // la fila de arriba de la billetera: solo foto y nombre
+  const ya = $('yoAva'), yn = $('yoNom');
+  if(ya) ya.textContent = (S.username || S.wallet || 'W')[0].toUpperCase();
+  if(yn) yn.textContent = S.conectado
+    ? (S.username ? '@'+S.username : corto(S.wallet))
+    : 'Sin conectar';
+
   if(!S.conectado){
     $('pName').textContent = 'Sin conectar';
     $('pAddr').textContent = 'Conecta tu wallet para ver tu perfil';
