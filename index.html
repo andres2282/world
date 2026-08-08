@@ -254,6 +254,14 @@ img.ava{object-fit:cover;display:block;
 .fld{margin-bottom:14px}
 .fld label{display:block;font-size:11px;letter-spacing:.1em;color:var(--dim);
   text-transform:uppercase;margin-bottom:6px}
+.planes{display:grid;gap:8px;margin:4px 0 12px}
+.plan{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--line);cursor:pointer;text-align:left}
+.plan.sel{border-color:var(--lime);background:rgba(47,123,255,.08)}
+.plan b{font-size:16px;color:var(--text)}
+.plan span{font-size:12px;color:var(--dim)}
+.plan i{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;
+  letter-spacing:.08em;color:var(--lime)}
 .mini-btn{padding:6px 12px;border-radius:8px;background:var(--panel-2);
   border:1px solid var(--line);color:var(--lime);font-size:13px;font-weight:700;
   font-family:var(--ui);cursor:pointer}
@@ -799,14 +807,15 @@ img.ava{object-fit:cover;display:block;
     <div class="hoja-in">
       <div class="hoja-bar"></div>
       <h3>Destacar tu token</h3>
-      <p class="hoja-p">Aparecerá arriba de todo, en el carrusel de destacados.
-        El pago va directo a la tesorería.</p>
+      <p class="hoja-p">Aparecerá en el carrusel de destacados. El orden lo
+        decide lo invertido: quien más paga, más arriba sale.</p>
       <div class="fld">
         <label>Cuál</label>
         <select id="destSel"></select>
       </div>
+      <div id="destPlanes" class="planes"></div>
       <div class="hint" id="destInfo" style="margin-bottom:12px"></div>
-      <button class="cta" id="destBtn" onclick="pagarDestacado()">Destacar por 24 h</button>
+      <button class="cta" id="destBtn" onclick="pagarDestacado()">Destacar</button>
       <p class="nota">Destacar es publicidad, no un aval: World Launch no revisa
         ni recomienda ningún token.</p>
       <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
@@ -863,7 +872,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b53';
+const BUILD = 'WL b55';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -959,7 +968,8 @@ const GEK_FACTORY  = "0xE467651bAFAF731535aB68463a51d45Ed98366A8";
 const GEK_METADATA = "0xF44C823c7F6F3faEC65E4148f03750D145406204";
 // Contrato de destacados. Mientras esté vacío, el botón "Destacar" sigue
 // mostrando "Pronto" y el carrusel se llena solo con los más activos.
-const GEK_DESTACADOS = "";
+// WorldLaunchDestacados, desplegado en el bloque 33412354
+const GEK_DESTACADOS = "0x9CDD9e7C453599A6D1DD47A5C81c9BD5bE6640FF";
 
 // Uniswap V3 en World Chain: sirven para averiguar si un token cualquiera
 // tiene pool y con cuánta liquidez, antes de habilitarlo para swap.
@@ -1026,9 +1036,10 @@ const FN = {
   // ERC-20
   aprobar:      { sig:'approve(address,uint256)',     types:['address','uint256'] },
   // WorldLaunchDestacados
-  destacarTk:   { sig:'destacar(address)',            types:['address'] },
+  destacarTk:   { sig:'destacar(address,uint8)',      types:['address','uint8'] },
+  destPlan:     { sig:'planes(uint256)',              types:['uint256'] },
+  destCuantos:  { sig:'cuantosPlanes()',              types:[] },
   destActivos:  { sig:'activos()',                    types:[] },
-  destPrecio:   { sig:'precio()',                     types:[] },
   destCupo:     { sig:'cupoLibre()',                  types:[] },
   // Uniswap V3
   buscarPool:   { sig:'getPool(address,address,uint24)',
@@ -2191,12 +2202,17 @@ async function cargarDestacados(){
   S.tokens.forEach(t => { t.dest = false; t.fin = 0; });
   if(!GEK_DESTACADOS) return;
   try{
-    const r = await leer(GEK_DESTACADOS, 'destActivos', [], ['address[]','uint256[]']);
+    const r = await leer(GEK_DESTACADOS, 'destActivos', [],
+                         ['address[]','uint256[]','uint256[]']);
     if(!r) return;
-    const [dirs, hasta] = r;
+    const [dirs, hasta, invertido] = r;
     dirs.forEach((d, i) => {
       const t = S.tokens.find(x => lc(x.dir) === lc(d));
-      if(t){ t.dest = true; t.fin = Number(hasta[i]) * 1000; }
+      if(t){
+        t.dest = true;
+        t.fin  = Number(hasta[i]) * 1000;
+        t.inv  = n18(invertido[i]);   // lo pagado: es lo que decide el orden
+      }
     });
   }catch(e){ log('destacados: ' + (e.message||e), true); }
 }
@@ -2208,7 +2224,10 @@ function pintarDestacados(){
   // Mientras no exista el contrato de destacados de pago, el carrusel se llena
   // solo con datos reales de la cadena: los que más WLD llevan recaudado. Si
   // nadie ha recaudado todavía, muestra los más nuevos y lo dice.
-  let d = S.tokens.filter(t=>t.dest);
+  // Los destacados van ordenados por lo que pagaron, de mayor a menor: quien
+  // mas invierte, mas arriba. A igual inversion, primero el que compro despues.
+  let d = S.tokens.filter(t=>t.dest)
+                  .sort((a,b) => (b.inv||0) - (a.inv||0) || (b.fin||0) - (a.fin||0));
   let auto = false;
   if(!d.length){
     const conActividad = S.tokens.filter(t => t.raised > 0)
@@ -2233,10 +2252,10 @@ function pintarDestacados(){
     const h = Math.max(0, Math.floor((t.fin-Date.now())/3.6e6));
     const m = Math.max(0, Math.floor(((t.fin-Date.now())%3.6e6)/6e4));
     const auto = S._featAuto;
-    const etiqueta = auto ? '#'+(i+1) : 'DESTACADO';
+    const etiqueta = auto ? '#'+(i+1) : (i === 0 ? '&#128081; TOP' : 'DESTACADO');
     const pie = auto
       ? `<span class="cd">${t.raised > 0 ? fmt(t.raised)+' WLD recaudados' : 'sin operaciones aún'}</span>`
-      : `<span class="cd">termina en ${h}h ${m}m</span>`;
+      : `<span class="cd">${h}h ${m}m` + (t.inv ? ` &middot; ${fmt(t.inv,0)} WLD` : '') + `</span>`;
     return `<button class="feat" onclick="abrirToken('${t.s}')">
       <span class="tag">${etiqueta}</span>
       <div class="feat-top">
@@ -2896,29 +2915,66 @@ function abrirHojaDestacar(mios){
   const sel = $('destSel');
   sel.innerHTML = mios.map(t =>
     `<option value="${t.dir}">${t.n} ($${t.s})</option>`).join('');
-  $('destInfo').textContent = 'Leyendo precio y cupo...';
+  $('destPlanes').innerHTML = '<div class="hint">Leyendo planes…</div>';
+  $('destInfo').textContent = '';
   $('hojaDestacar').classList.remove('hidden');
+  cargarPlanes();
+}
 
-  Promise.all([
-    leer(GEK_DESTACADOS, 'destPrecio', [], ['uint256']),
-    leer(GEK_DESTACADOS, 'destCupo',   [], ['uint256']),
-  ]).then(([pr, cu]) => {
-    const precio = pr ? n18(pr[0]) : 0;
-    const cupo   = cu ? Number(cu[0]) : 0;
-    S._destPrecio = precio;
+// Los planes se leen del contrato, no van escritos en la app: asi se pueden
+// cambiar los precios sin volver a publicar el archivo.
+async function cargarPlanes(){
+  try{
+    const c = await leer(GEK_DESTACADOS, 'destCuantos', [], ['uint256']);
+    const cuantos = c ? Number(c[0]) : 0;
+    const lista = [];
+    for(let i = 0; i < cuantos; i++){
+      const r = await leer(GEK_DESTACADOS, 'destPlan', [i], ['uint256','uint256','bool']);
+      if(r && r[2]) lista.push({ id:i, precio:n18(r[0]), horas:Number(r[1])/3600 });
+    }
+    if(!lista.length) throw new Error('sin planes');
+
+    S._planes = lista;
+    S._planSel = lista.length - 1;   // el mas grande viene marcado
+    pintarPlanes();
+
+    const cu = await leer(GEK_DESTACADOS, 'destCupo', [], ['uint256']);
+    const cupo = cu ? Number(cu[0]) : 0;
     $('destInfo').textContent = cupo > 0
-      ? fmt(precio,2) + ' WLD por 24 horas · quedan ' + cupo + ' lugar(es)'
+      ? 'Quedan ' + cupo + ' lugar(es) libres'
       : 'Ahora mismo no hay lugar libre, vuelve más tarde';
     $('destBtn').disabled = cupo <= 0;
-  }).catch(() => { $('destInfo').textContent = 'No se pudo leer el precio'; });
+  }catch(e){
+    $('destPlanes').innerHTML = '<div class="hint">No se pudieron leer los planes</div>';
+    $('destBtn').disabled = true;
+  }
+}
+
+function pintarPlanes(){
+  const lista = S._planes || [];
+  $('destPlanes').innerHTML = lista.map(p => {
+    const dur = p.horas >= 24 ? (p.horas/24) + (p.horas >= 48 ? ' días' : ' día')
+                              : p.horas + ' horas';
+    return `<button class="plan ${p.id === S._planSel ? 'sel' : ''}"
+              onclick="elegirPlan(${p.id})">
+      <div><b>${fmt(p.precio,0)} WLD</b><br><span>${dur} destacado</span></div>
+      ${p.id === (lista[lista.length-1]||{}).id ? '<i>MÁS ARRIBA</i>' : ''}
+    </button>`;
+  }).join('');
+}
+
+function elegirPlan(id){
+  S._planSel = id;
+  pintarPlanes();
 }
 
 async function pagarDestacado(){
   const btn = $('destBtn');
   const dir = $('destSel').value;
   if(!dir) return;
-  const precio = S._destPrecio || 2;
-  const wei = ethers.parseUnits(String(precio), 18);
+  const plan = (S._planes || []).find(p => p.id === S._planSel);
+  if(!plan) return;
+  const wei = ethers.parseUnits(String(plan.precio), 18);
 
   btn.disabled = true; btn.textContent = 'Pagando...';
   try{
@@ -2928,7 +2984,7 @@ async function pagarDestacado(){
       { to: lc(WLD_TOKEN_ADDRESS),
         data: encodeCall(FN.aprobar.sig, FN.aprobar.types, [GEK_DESTACADOS, wei]) },
       { to: lc(GEK_DESTACADOS),
-        data: encodeCall(FN.destacarTk.sig, FN.destacarTk.types, [dir]) },
+        data: encodeCall(FN.destacarTk.sig, FN.destacarTk.types, [dir, plan.id]) },
     ]);
     if(ok){
       toast('Listo, tu token ya está destacado');
@@ -2938,7 +2994,7 @@ async function pagarDestacado(){
     } else {
       toast('No se pudo destacar: ' + (S.ultimoError||'').slice(0,60), 6000);
     }
-  } finally { btn.disabled = false; btn.textContent = 'Destacar por 24 h'; }
+  } finally { btn.disabled = false; btn.textContent = 'Destacar'; }
 }
 
 
