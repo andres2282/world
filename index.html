@@ -160,10 +160,6 @@ img.ava{object-fit:cover;display:block;
 .tab.on{background:var(--lime);border-color:var(--lime);color:#FFFFFF;font-weight:700}
 
 /* ---------- buscador ---------- */
-.search{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:9px 12px;
-  border-radius:10px;background:var(--panel);border:1px solid var(--line)}
-.search input{flex:1;background:none;border:0;color:var(--text);outline:none}
-.search input::placeholder{color:var(--dim)}
 
 /* ---------- tarjeta de token ---------- */
 .tk{
@@ -221,8 +217,15 @@ img.ava{object-fit:cover;display:block;
 .dt-hd h1{margin:0;font-family:var(--display);font-size:24px;letter-spacing:.02em}
 .dt-price{display:flex;align-items:baseline;gap:9px;margin-top:12px}
 .dt-price .big{font-family:var(--mono);font-size:27px;font-weight:700}
-.chart{height:150px;margin:0 14px;border-radius:12px;background:var(--panel);
+.chart{height:190px;margin:0 14px;border-radius:12px;background:var(--panel);
   border:1px solid var(--line);overflow:hidden}
+.tfs{display:flex;gap:6px;padding:8px 14px 0;justify-content:center}
+.dt-info{padding:0 14px}
+.dt-info:empty{display:none}
+.tf{padding:5px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);
+  color:var(--dim);font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:.06em;cursor:pointer}
+.tf.on{background:rgba(47,123,255,.14);border-color:var(--lime);color:var(--lime)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px}
 .stat{padding:11px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
 .stat span{display:block;font-size:10px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
@@ -438,7 +441,6 @@ img.ava{object-fit:cover;display:block;
 .splash .cta{max-width:330px}
 .splash .fine{margin-top:16px;font-size:11px;color:#66748C;max-width:320px}
 
-
 /* ---------- splash World Launch ---------- */
 .splash{
   position:fixed;inset:0;z-index:200;background:#000;
@@ -527,13 +529,9 @@ img.ava{object-fit:cover;display:block;
       <div class="sp"></div>
       <span class="cnt" id="listCount"></span>
     </div>
-    <div class="search">
-      <span style="color:var(--dim)">🔍</span>
-      <input id="q" placeholder="Buscar por nombre o símbolo" oninput="pintarLista()">
-    </div>
     <div class="tabs" id="tabs">
-      <button class="tab on" data-f="nuevos" onclick="setTab(this)">Nuevos</button>
-      <button class="tab" data-f="tendencia" onclick="setTab(this)">Tendencia</button>
+      <button class="tab on" data-f="tendencia" onclick="setTab(this)">Tendencia</button>
+      <button class="tab" data-f="nuevos" onclick="setTab(this)">Nuevos</button>
       <button class="tab" data-f="graduados" onclick="setTab(this)">Graduados</button>
     </div>
     <div id="lista"></div>
@@ -556,17 +554,25 @@ img.ava{object-fit:cover;display:block;
       <span class="big num" id="dPrice">—</span>
       <span class="num" id="dChg">—</span>
     </div>
-    <p class="dt-desc hidden" id="dDesc"></p>
-    <p class="dt-fee hidden" id="dFee"></p>
-    <div class="riesgo hidden" id="dRiesgo"></div>
-    <div class="links hidden" id="dLinks"></div>
   </div>
   <div class="chart"><canvas id="chart"></canvas></div>
+  <div class="tfs" id="chartTfs">
+    <button class="tf" data-r="1h"   onclick="setRango('1h')">1H</button>
+    <button class="tf" data-r="6h"   onclick="setRango('6h')">6H</button>
+    <button class="tf" data-r="24h"  onclick="setRango('24h')">24H</button>
+    <button class="tf on" data-r="todo" onclick="setRango('todo')">TODO</button>
+  </div>
   <div class="grid2">
     <div class="stat"><span>Cap. de mercado</span><b id="dMcap">—</b></div>
     <div class="stat"><span>Recaudado</span><b id="dRaised">—</b></div>
     <div class="stat"><span>En circulación</span><b id="dCirc">—</b></div>
     <div class="stat"><span>Desde el lanzamiento</span><b id="dDesde">—</b></div>
+  </div>
+  <div class="dt-info">
+    <p class="dt-desc hidden" id="dDesc"></p>
+    <p class="dt-fee hidden" id="dFee"></p>
+    <div class="riesgo hidden" id="dRiesgo"></div>
+    <div class="links hidden" id="dLinks"></div>
   </div>
   <div class="tabs2" id="dTabs">
     <button class="tab2 on" data-p="stats"   onclick="setPanel('stats')">Resumen</button>
@@ -759,7 +765,6 @@ img.ava{object-fit:cover;display:block;
 
 <!-- ===================== PERFIL ===================== -->
 
-
 </div>
 
 <!-- Hojas emergentes: van fuera de las vistas porque son position:fixed y
@@ -877,7 +882,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b58';
+const BUILD = 'WL b63';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -1067,7 +1072,7 @@ const SLIPPAGE = 0.01;
 let S_LOG = [];
 const S = {
   vista:'explorar', wallet:'', username:'', conectado:false,
-  tokens:[], filtro:'nuevos', actual:null, lado:'comprar',
+  tokens:[], filtro:'tendencia', actual:null, lado:'comprar', rango:'todo',
   cargando:true, tarifa:6, yaUsoGratis:false, saldoWld:null, ultimaCotiza:null,
   imgFile:null, imgBytes:null, imgMime:null, imgZoom:1,
   ultimoError:null,
@@ -1415,7 +1420,6 @@ async function precioLanzamiento(){
   return _precioLanzamiento;
 }
 
-
 /* ------------------------------------------------------------------
    HISTORIAL DE OPERACIONES
    El router emite un evento por cada compra y venta, CON la wallet real
@@ -1426,7 +1430,6 @@ async function precioLanzamiento(){
 function dirATopic(a){
   return '0x' + '0'.repeat(24) + lc(a).replace('0x','');
 }
-
 
 // Lee TODA la historia del token desde que existe el router. Se hace en tandas
 // paralelas de 900 bloques (tope del RPC) y se guarda en cache, asi cambiar de
@@ -1820,7 +1823,6 @@ function arrancarFeed(){
   clearInterval(S._feedTimer);
   S._feedTimer = setInterval(()=>sondearActividad(false), 20000);
 }
-
 
 /* ------------------------------------------------------------------
    DIAGNOSTICO
@@ -2292,12 +2294,14 @@ function pintarDestacados(){
 }
 
 function pintarLista(){
-  const q = ($('q').value||'').toLowerCase();
   let l = S.tokens.slice();
   if(S.filtro==='graduados')      l = l.filter(t=>t.grad);
-  else if(S.filtro==='tendencia') l = l.filter(t=>!t.grad).sort((a,b)=>b.raised-a.raised);
+  // Tendencia = mas WLD recaudado primero. Mide movimiento real, no solo el
+  // precio de ahora. El ||0 es necesario: en un token recien creado "raised"
+  // puede venir sin valor y la resta daria NaN, dejando el orden al azar.
+  else if(S.filtro==='tendencia') l = l.filter(t=>!t.grad)
+                                       .sort((a,b)=>(b.raised||0)-(a.raised||0));
   else                            l = l.filter(t=>!t.grad);
-  if(q) l = l.filter(t=> t.n.toLowerCase().includes(q) || t.s.toLowerCase().includes(q));
 
   $('listCount').textContent = l.length ? l.length+(l.length===1?' token':' tokens') : '';
 
@@ -2430,70 +2434,182 @@ function abrirToken(sym){
   ir('token');
 }
 
+// ---------- grafico de precio ----------
+// Reescrito: antes repartia los puntos por ORDEN, asi que siete operaciones en
+// un minuto se veian igual que siete en un dia. Ahora el eje X es TIEMPO real,
+// derivado del numero de bloque (World Chain hace un bloque cada ~2 s), con
+// rangos de tiempo elegibles, rejilla, etiquetas y verde/rojo segun el cambio.
+
+const SEG_POR_BLOQUE = 2;
+
+// Rangos disponibles. "todo" usa lo que haya en el historial (~25 h).
+const RANGOS = [
+  { id:'1h',   et:'1H',   seg: 3600 },
+  { id:'6h',   et:'6H',   seg: 6*3600 },
+  { id:'24h',  et:'24H',  seg: 24*3600 },
+  { id:'todo', et:'TODO', seg: Infinity },
+];
+
+function setRango(id){
+  S.rango = id;
+  document.querySelectorAll('#chartTfs .tf').forEach(b =>
+    b.classList.toggle('on', b.dataset.r === id));
+  if(S.actual) dibujarChart(S.actual);
+}
+
+// Serie de precios en el tiempo. Cada operacion da un precio real
+// (WLD movido / tokens movidos) y su momento sale del bloque.
+function serieDePrecios(t){
+  if(!S.ops || !S.ops.lista) return [];
+  const ultimo = S.ops.ultimo || 0;
+  const ahora  = Date.now();
+  const cuando = b => ahora - (ultimo - b) * SEG_POR_BLOQUE * 1000;
+
+  const pts = S.ops.lista
+    .filter(o => o.tok > 0 && o.wld > 0)
+    .map(o => ({ ts: cuando(o.bloque), p: o.wld / o.tok, compra: o.compra }))
+    .sort((a,b) => a.ts - b.ts);
+
+  // El precio de lanzamiento va al principio para que la linea arranque en el
+  // origen real de la curva y no en la primera compra.
+  if(_precioLanzamiento && pts.length){
+    pts.unshift({ ts: pts[0].ts - 60000, p: _precioLanzamiento, inicio: true });
+  }
+  // Y el precio de AHORA al final, para que la linea llegue hasta el borde.
+  if(pts.length && t && t.p > 0) pts.push({ ts: ahora, p: t.p, fin: true });
+  return pts;
+}
+
 function dibujarChart(t){
   try{
     const c = $('chart'); if(!c) return;
     const ctx = c.getContext('2d');
     const w = c.clientWidth || c.parentElement.clientWidth || 320;
-    const h = c.clientHeight || 150;
+    const h = c.clientHeight || 190;
     const dpr = window.devicePixelRatio || 1;
-    c.width = Math.max(1, Math.round(w*dpr));
+    c.width  = Math.max(1, Math.round(w*dpr));
     c.height = Math.max(1, Math.round(h*dpr));
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,w,h);
 
     const aviso = (l1, l2) => {
-      ctx.fillStyle = '#7C8C86'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#7C8AA3'; ctx.textAlign = 'center';
       ctx.font = '13px system-ui, sans-serif';
       ctx.fillText(l1, w/2, h/2 - 6);
-      if(l2){ ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#4C5A55';
+      if(l2){ ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#55627A';
               ctx.fillText(l2, w/2, h/2 + 14); }
     };
 
     if(!S.ops){ aviso('Leyendo operaciones...'); return; }
 
-    // Cada operacion da un precio real: WLD movido / tokens movidos.
-    // Se antepone el precio de lanzamiento para que siempre haya linea.
-    const pts = [];
-    if(_precioLanzamiento) pts.push({ p: _precioLanzamiento, compra: true, inicio: true });
-    for(const o of S.ops.lista){
-      if(o.tok > 0 && o.wld > 0) pts.push({ p: o.wld / o.tok, compra: o.compra });
-    }
+    let pts = serieDePrecios(t);
     if(pts.length < 2){
       aviso('Sin operaciones todavia', 'La curva arranca con la primera compra');
       return;
     }
 
+    // Recorte por rango de tiempo
+    const rango = RANGOS.find(r => r.id === (S.rango || 'todo')) || RANGOS[3];
+    if(rango.seg !== Infinity){
+      const desde = Date.now() - rango.seg*1000;
+      const dentro = pts.filter(o => o.ts >= desde);
+      // Si en ese rango no hay nada que dibujar, se muestra todo y se avisa.
+      pts = dentro.length >= 2 ? dentro : pts;
+    }
+
+    // Margenes: espacio a la derecha para el precio y abajo para las horas
+    const PD = 52, PB = 18, PT = 10;
+    const izq = 0, der = w - PD, alto = h - PB - PT;
+
     const vals = pts.map(o => o.p);
     let min = Math.min(...vals), max = Math.max(...vals);
-    if(max === min){ max = min * 1.02; min = min * 0.98; }
-    const r = (max - min) || 1;
-    const x = i => (i/(pts.length-1))*w;
-    const y = p => h - 14 - ((p - min)/r)*(h - 30);
+    if(max === min){ max = min*1.02 || 1; min = min*0.98; }
+    const pad = (max-min)*0.12;
+    min -= pad; max += pad;
+    const r = (max-min) || 1;
+
+    const t0 = pts[0].ts, t1 = pts[pts.length-1].ts;
+    const dt = (t1-t0) || 1;
+    const x = ts => izq + ((ts - t0)/dt) * (der - izq);
+    const y = p  => PT + alto - ((p - min)/r) * alto;
+
     const sube = vals[vals.length-1] >= vals[0];
-    const col = sube ? '#C6FF3D' : '#FF4D6A';
+    const col  = sube ? '#31D583' : '#FF4D6A';
 
-    const g = ctx.createLinearGradient(0,0,0,h);
-    g.addColorStop(0, sube ? 'rgba(47,123,255,.30)' : 'rgba(255,77,106,.28)');
+    // Rejilla y precios de referencia
+    ctx.strokeStyle = 'rgba(255,255,255,.05)';
+    ctx.fillStyle   = '#55627A';
+    ctx.font = '9.5px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.lineWidth = 1;
+    for(let i = 0; i <= 3; i++){
+      const py = PT + (alto/3)*i;
+      ctx.beginPath(); ctx.moveTo(izq, py); ctx.lineTo(der, py); ctx.stroke();
+      const pv = max - (r/3)*i;
+      ctx.fillText(precioCorto(pv), der + 6, py + 3);
+    }
+
+    // Area bajo la linea
+    const g = ctx.createLinearGradient(0, PT, 0, PT+alto);
+    g.addColorStop(0, sube ? 'rgba(49,213,131,.26)' : 'rgba(255,77,106,.24)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.beginPath(); ctx.moveTo(0,h);
-    pts.forEach((o,i)=>ctx.lineTo(x(i), y(o.p)));
-    ctx.lineTo(w,h); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
-
     ctx.beginPath();
-    pts.forEach((o,i)=> i ? ctx.lineTo(x(i), y(o.p)) : ctx.moveTo(x(i), y(o.p)));
-    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.moveTo(x(pts[0].ts), PT+alto);
+    pts.forEach(o => ctx.lineTo(x(o.ts), y(o.p)));
+    ctx.lineTo(x(pts[pts.length-1].ts), PT+alto);
+    ctx.closePath(); ctx.fillStyle = g; ctx.fill();
 
-    pts.forEach((o,i)=>{
-      if(o.inicio) return;
-      ctx.beginPath(); ctx.arc(x(i), y(o.p), 3, 0, 7);
-      ctx.fillStyle = o.compra ? '#C6FF3D' : '#FF4D6A'; ctx.fill();
+    // Linea
+    ctx.beginPath();
+    pts.forEach((o,i) => i ? ctx.lineTo(x(o.ts), y(o.p)) : ctx.moveTo(x(o.ts), y(o.p)));
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+
+    // Puntos de cada operacion, solo si no son tantos que ensucien
+    if(pts.length <= 40){
+      pts.forEach(o => {
+        if(o.inicio || o.fin) return;
+        ctx.beginPath(); ctx.arc(x(o.ts), y(o.p), 2.6, 0, 7);
+        ctx.fillStyle = o.compra ? '#31D583' : '#FF4D6A'; ctx.fill();
+      });
+    }
+
+    // Punto del precio actual, con halo
+    const ult = pts[pts.length-1];
+    ctx.beginPath(); ctx.arc(x(ult.ts), y(ult.p), 7, 0, 7);
+    ctx.fillStyle = sube ? 'rgba(49,213,131,.22)' : 'rgba(255,77,106,.22)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x(ult.ts), y(ult.p), 3, 0, 7);
+    ctx.fillStyle = col; ctx.fill();
+
+    // Horas en el eje de abajo
+    ctx.fillStyle = '#55627A'; ctx.textAlign = 'center';
+    ctx.font = '9.5px ui-monospace, monospace';
+    [0, 0.5, 1].forEach(f => {
+      const ts = t0 + dt*f;
+      const d = new Date(ts);
+      const et = String(d.getHours()).padStart(2,'0') + ':' +
+                 String(d.getMinutes()).padStart(2,'0');
+      ctx.fillText(et, Math.min(Math.max(x(ts), 16), der-16), h - 5);
     });
 
   }catch(e){
     log('grafico: ' + (e.message||e), true);
   }
 }
+
+// Precios muy chicos en notacion legible: 0.000001234 -> 0.0₅1234
+function precioCorto(v){
+  if(!isFinite(v) || v <= 0) return '0';
+  if(v >= 1)    return v.toFixed(2);
+  if(v >= 0.01) return v.toFixed(4);
+  const exp = Math.floor(Math.log10(v));
+  const ceros = -exp - 1;
+  const digs = Math.round(v * Math.pow(10, ceros + 4)).toString().slice(0,4);
+  return ceros >= 4 ? '0.0' + sub(ceros) + digs : v.toFixed(Math.min(8, ceros + 4));
+}
+const SUB = '\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089';
+const sub = n => String(n).split('').map(d => SUB[+d]).join('');
+
 function setLado(l){
   S.lado = l;
   const comprando = l==='comprar';
@@ -2910,7 +3026,6 @@ async function crearToken(){
   } finally { btn.disabled=false; btn.textContent='Crear token'; }
 }
 
-
 async function destacar(){
   if(!GEK_DESTACADOS){
     toast('Destacar todavía no está activo — falta desplegar su contrato', 5000);
@@ -3019,7 +3134,6 @@ async function pagarDestacado(){
     }
   } finally { btn.disabled = false; btn.textContent = 'Destacar'; }
 }
-
 
 /* ---------- portafolio ---------- */
 // Lista TODOS los ERC-20 de la wallet usando la API de Alchemy.
