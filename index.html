@@ -872,7 +872,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b56';
+const BUILD = 'WL b57';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -2913,13 +2913,16 @@ async function destacar(){
   }
   if(!S.conectado) return conectarWallet();
 
-  // Solo tiene sentido destacar un token propio
-  const mios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
-  if(!mios.length){
-    toast('Primero crea un token, después puedes destacarlo', 5000);
+  // Destacar es publicidad, no propiedad: cualquiera puede pagar por cualquier
+  // token. Los propios van primero en la lista, que es lo mas comun, pero no
+  // se bloquea al que quiera promocionar otro.
+  if(!S.tokens.length){
+    toast('Todavia no hay tokens que destacar', 5000);
     return;
   }
-  abrirHojaDestacar(mios);
+  const propios = S.tokens.filter(t => t.creador && lc(t.creador) === lc(S.wallet));
+  const resto   = S.tokens.filter(t => !propios.includes(t));
+  abrirHojaDestacar(propios.concat(resto));
 }
 
 function abrirHojaDestacar(mios){
@@ -2956,7 +2959,11 @@ async function cargarPlanes(){
       : 'Ahora mismo no hay lugar libre, vuelve más tarde';
     $('destBtn').disabled = cupo <= 0;
   }catch(e){
-    $('destPlanes').innerHTML = '<div class="hint">No se pudieron leer los planes</div>';
+    // En World App no se puede abrir la consola, asi que el error va en pantalla
+    $('destPlanes').innerHTML = '<div class="err-box">No se pudieron leer los planes: '
+      + String(e.message || e).slice(0,120)
+      + '<br><br>Si dice invalid_contract, falta agregar ' + GEK_DESTACADOS
+      + ' en Contract Entrypoints.</div>';
     $('destBtn').disabled = true;
   }
 }
