@@ -517,7 +517,7 @@ img.ava{object-fit:cover;display:block;
   </section>
 
   <div class="promo">
-    <p><b>¿Quieres tu token aquí?</b><br>Destácalo por 2 WLD durante 24 horas.</p>
+    <p><b>¿Quieres tu token aquí?</b><br>Desde 2 WLD. El que más invierte va primero.</p>
     <button onclick="destacar()" id="promoBtn" style="opacity:.55">Pronto</button>
   </div>
 
@@ -872,7 +872,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b55';
+const BUILD = 'WL b56';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -2217,6 +2217,19 @@ async function cargarDestacados(){
   }catch(e){ log('destacados: ' + (e.message||e), true); }
 }
 
+// Carga los destacados de la cadena, enciende el boton de promocionar si el
+// contrato ya existe, y repinta el carrusel. Se llama al arrancar y despues de
+// cada operacion.
+async function refrescarDestacados(){
+  await cargarDestacados();
+  const pb = $('promoBtn');
+  if(pb && GEK_DESTACADOS){
+    pb.style.opacity = '1';
+    pb.textContent = 'Destacar';
+  }
+  pintarDestacados();
+}
+
 function pintarDestacados(){
   const sec = document.querySelector('#featRail').closest('.sec');
   const titulo = sec.querySelector('h2');
@@ -2562,10 +2575,8 @@ async function ejecutarTrade(){
       toast(S.lado==='comprar' ? '✅ Compra hecha' : '✅ Venta hecha');
       $('amt').value=''; calcRecibe();
       await cargarTokens();
-  await cargarDestacados();
-  const pb = $('promoBtn');
-  if(pb && GEK_DESTACADOS){ pb.style.opacity = '1'; pb.textContent = 'Destacar'; }
-  pintarDestacados(); renderTodo();
+      await refrescarDestacados();
+      renderTodo();
       const fresco = S.tokens.find(x=>x.curva===t.curva);
       if(fresco) abrirToken(fresco.s);
     } else {
@@ -3362,6 +3373,7 @@ function renderTodo(){
   await elegirRPC();         // primero, un RPC que de verdad responda
   try{ arrancarFeed(); }catch(e){ log('feed no arranco: ' + e.message, true); }
   await cargarTokens();
+  await refrescarDestacados();
   log('listo');
   renderTodo();
   window.addEventListener('resize', ()=>{ if(S.actual && S.vista==='token') dibujarChart(S.actual); });
