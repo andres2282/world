@@ -284,6 +284,7 @@ img.ava{object-fit:cover;display:block;
   text-overflow:ellipsis;white-space:nowrap}
 .yo i{margin-left:auto;color:var(--dim);font-style:normal;font-size:18px}
 .yo:active{background:var(--panel-2)}
+.fld textarea{resize:vertical;min-height:88px;font-family:var(--mono);font-size:13px}
 .fld input,.fld textarea,.fld select{width:100%;padding:12px;border-radius:10px;background:var(--panel);
   border:1px solid var(--line);color:var(--text);outline:none}
 .fld input:focus,.fld textarea:focus,.fld select:focus{border-color:var(--lime)}
@@ -607,9 +608,9 @@ img.ava{object-fit:cover;display:block;
     <div class="menu hidden" id="dMenu">
       <button onclick="abrirBloqueo()">&#128274; Bloquear mis tokens</button>
       <button id="mEditar" onclick="abrirEditor()">&#9999;&#65039; Editar imagen y descripci&oacute;n</button>
-      <button onclick="proximamente('Quemar tokens')">&#128293; Quemar tokens<i>PRONTO</i></button>
+      <button onclick="abrirReparto()">&#127873; Repartir / regalar</button>
+      <button onclick="abrirQuema()">&#128293; Quemar tokens</button>
       <button onclick="proximamente('Estanque')">&#128167; Estanque<i>PRONTO</i></button>
-      <button onclick="proximamente('Airdrop')">&#129666; Airdrop<i>PRONTO</i></button>
     </div>
   </div>
 
@@ -846,6 +847,60 @@ img.ava{object-fit:cover;display:block;
     </div>
   </div>
 
+  <div class="hoja hidden" id="hojaRepartir">
+    <div class="hoja-in" style="max-height:88vh;overflow-y:auto">
+      <div class="hoja-bar"></div>
+      <button class="cerrar-x" onclick="cerrarHojas()" aria-label="Cerrar">&times;</button>
+      <h3>Repartir <span id="rpSim"></span></h3>
+      <p class="hoja-p">Una dirección y una cantidad por línea. Sirve para
+        regalar, para repartir entre varios o para un airdrop.</p>
+      <div class="fld">
+        <label>A quién y cuánto</label>
+        <textarea id="rpLista" rows="5" spellcheck="false"
+          placeholder="0x1234...abcd  5000&#10;0x5678...ef90  2500"></textarea>
+      </div>
+      <div class="fld">
+        <label>Plazo de custodia de quien recibe</label>
+        <select id="rpPlazo">
+          <option value="1" selected>24 horas</option>
+          <option value="2">7 días</option>
+          <option value="3">15 días</option>
+          <option value="4">1 mes</option>
+          <option value="5">3 meses</option>
+        </select>
+        <div class="hint" style="margin-top:6px">Los recibe bloqueados y los
+          reclama después con el botón de su Billetera. No hay envío instantáneo:
+          es el único canal que funciona sin registrar cada token.</div>
+      </div>
+      <div class="hint" id="rpInfo" style="margin-bottom:12px"></div>
+      <button class="cta" id="rpBtn" onclick="confirmarReparto()">Repartir</button>
+      <div class="err-box hidden" id="rpErr"></div>
+    </div>
+  </div>
+
+  <div class="hoja hidden" id="hojaQuemar">
+    <div class="hoja-in">
+      <div class="hoja-bar"></div>
+      <h3>Quemar tokens</h3>
+      <p class="hoja-p">Quedan en custodia a nombre de una dirección de la que
+        nadie tiene la llave. Nadie los va a poder reclamar nunca, y se ven en
+        Poseedores.</p>
+      <div class="fld">
+        <label>Cuántos <span id="qmSim"></span></label>
+        <input id="qmCant" type="text" inputmode="decimal" placeholder="0"
+               oninput="this.value=this.value.replace(',','.')">
+      </div>
+      <div class="chips" id="qmChips"></div>
+      <div class="hint" id="qmInfo" style="margin-bottom:12px"></div>
+      <button class="cta" id="qmBtn" onclick="confirmarQuema()">Quemar</button>
+      <p class="nota">Quemar <b>no sube el precio</b>: la curva cotiza por sus
+        reservas, no por el suministro. Sirve para demostrar que esos tokens no
+        se van a vender nunca. Es irreversible.</p>
+      <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
+      <div class="err-box hidden" id="qmErr"></div>
+    </div>
+  </div>
+
   <div class="hoja hidden" id="hojaBloquear">
     <div class="hoja-in">
       <div class="hoja-bar"></div>
@@ -938,7 +993,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b66';
+const BUILD = 'WL b68';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -1037,6 +1092,16 @@ const GEK_METADATA = "0xF44C823c7F6F3faEC65E4148f03750D145406204";
 // WorldLaunchDestacados, desplegado en el bloque 33412354
 const GEK_DESTACADOS = "0x9CDD9e7C453599A6D1DD47A5C81c9BD5bE6640FF";
 
+// Permit2 vive en la misma direccion en todas las redes y World App aprueba
+// sola los ERC-20 nuevos contra el. Es lo que permite mover un token de
+// direccion dinamica sin que la app tenga que llamar al token directamente.
+const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+
+// Direccion de quema. NO se usa la 0x000...000 porque el ERC-20 estandar
+// rechaza las transferencias a la direccion cero; la convencion en toda la
+// industria es esta, que nadie controla y de la que no se puede salir.
+const DIR_QUEMA = "0x000000000000000000000000000000000000dEaD";
+
 // Uniswap V3 en World Chain: sirven para averiguar si un token cualquiera
 // tiene pool y con cuánta liquidez, antes de habilitarlo para swap.
 const UNIV3_FACTORY = "0x7a5028BDa40e7B173C278C5342087826455ea25a";
@@ -1081,8 +1146,19 @@ const FN = {
   bloqueadoDeUsuario: { sig:'bloqueadoDe(address,address)', types:['address','address'] },
   reclamable:   { sig:'reclamableDe(address,address)', types:['address','address'] },
   reclamarTodo: { sig:'reclamarTodo(address)',        types:['address'] },
+  // Permit2 (AllowanceTransfer)
+  p2Aprobar:    { sig:'approve(address,address,uint160,uint48)',
+                  types:['address','address','uint160','uint48'] },
+  p2Enviar:     { sig:'transferFrom(address,address,uint160,address)',
+                  types:['address','address','uint160','address'] },
   lBloquear:    { sig:'bloquear(address,uint256,uint8)',
                   types:['address','uint256','uint8'] },
+  // Saca los tokens de QUIEN FIRMA y se los acredita a otra direccion. Es el
+  // unico canal que permite mover un token a otra wallet sin llamar nunca su
+  // direccion (que es dinamica y World App bloquea). De aqui salen repartir,
+  // regalar y quemar, sin desplegar nada nuevo.
+  lBloquearPara:{ sig:'bloquearPara(address,uint256,uint8,address)',
+                  types:['address','uint256','uint8','address'] },
   transferir:   { sig:'transfer(address,uint256)',    types:['address','uint256'] },
   // FlickBondingCurve
   // Comprar y vender pasan por el router: la curva tiene dirección nueva en
@@ -1692,8 +1768,15 @@ async function cargarHolders(t){
   if(!S.ops) return;
   const clave = lc(t.curva);
   const dirs = [...new Set(S.ops.lista.map(o => lc(o.usuario)))];
-  if(!dirs.length){ S.holders = []; pintarPanel(t); return; }
   try{
+    // Lo quemado se consulta siempre, aunque no haya operaciones: nadie
+    // "opera" desde la direccion de quema, asi que no sale de los eventos.
+    // Los quemados quedan retenidos en el lock a nombre de la direccion
+    // muerta, asi que no se leen con balanceOf sino con el saldo bloqueado.
+    const quemado = await leer(GEK_LOCK, 'bloqueadoDeUsuario',
+                               [DIR_QUEMA, t.dir], ['uint256']);
+    const qCant = quemado ? n18(quemado[0]) : 0;
+
     const saldos = await Promise.all(dirs.map(async d => {
       const [libre, bloq] = await Promise.all([
         leer(t.dir, 'saldoDe', [d], ['uint256']),
@@ -1701,7 +1784,10 @@ async function cargarHolders(t){
       ]);
       return { dir: d, cant: (libre ? n18(libre[0]) : 0) + (bloq ? n18(bloq[0]) : 0) };
     }));
-    S.holders = saldos.filter(x => x.cant > 0.000001).sort((a,b) => b.cant - a.cant);
+    S.holders = saldos.filter(x => x.cant > 0.000001)
+                      .filter(x => lc(x.dir) !== lc(DIR_QUEMA))
+                      .sort((a,b) => b.cant - a.cant);
+    S.quemado  = qCant;
     S.holdersDe = clave;
     if(S.actual && lc(S.actual.curva) === clave) pintarPanel(t);
   }catch(e){ log('holders: ' + (e.message||e), true); }
@@ -1714,12 +1800,28 @@ function panelPoseedores(t, cont){
     return;
   }
   const lista = S.holders.slice(0, 50);
+  const quemado = S.quemado || 0;
+
+  // Lo quemado va arriba y FUERA del ranking: no es un poseedor, es suministro
+  // que ya no existe para nadie.
+  const filaQuema = quemado > 0 ? `
+      <div class="op-row" style="border-color:rgba(255,140,60,.3)">
+        <span class="hold-pos" style="color:#FF8C3C">&#128293;</span>
+        <span class="quien" style="color:#FF8C3C">Quemado para siempre</span>
+        <span class="cuanto">${fmt(quemado,0)}</span>
+        <span class="cuanto" style="color:var(--dim);min-width:52px;text-align:right">
+          ${(quemado/1e9*100).toFixed(2)}%</span>
+      </div>` : '';
+
   if(!lista.length){
-    cont.innerHTML = '<div class="panel-vacio">Todavia no hay poseedores.</div>';
+    cont.innerHTML = filaQuema ||
+      '<div class="panel-vacio">Todavia no hay poseedores.</div>';
     return;
   }
   const total = lista.reduce((a,x) => a + x.cant, 0);
-  cont.innerHTML = `<div class="panel-tit">${S.holders.length} poseedores</div>` +
+  cont.innerHTML = `<div class="panel-tit">${S.holders.length} poseedores`
+    + (quemado > 0 ? ` &middot; ${fmt(quemado,0)} quemados` : '') + `</div>`
+    + filaQuema +
     lista.map((x, k) => `
       <div class="op-row">
         <span class="hold-pos">#${k+1}</span>
@@ -2865,6 +2967,175 @@ function ajustarZoom(pre){
 // Editor de metadatos, solo para el creador del token
 function toggleMenu(){ $('dMenu').classList.toggle('hidden'); }
 
+// ---------- repartir / regalar / airdrop ----------
+// Todo pasa por `bloquearPara` del lock, que saca los tokens de quien firma y
+// se los acredita a otra direccion. Es el unico canal disponible sin
+// redesplegar: la direccion del token es dinamica y World App no deja llamarla.
+function abrirReparto(){
+  $('dMenu').classList.add('hidden');
+  const t = S.actual; if(!t) return;
+  if(!S.conectado) return conectarWallet();
+
+  const libre = S.saldoToken || 0;
+  $('rpSim').textContent = '$' + t.s;
+  $('rpErr').classList.add('hidden');
+  $('rpLista').value = '';
+  $('rpInfo').textContent = libre > 0
+    ? 'Disponibles: ' + fmt(libre, 0) + ' ' + t.s
+    : 'No tienes ' + t.s + ' disponibles.';
+  $('rpBtn').disabled = libre <= 0;
+  $('hojaRepartir').classList.remove('hidden');
+}
+
+// Cada linea: una direccion y una cantidad, separadas por espacio, coma o
+// punto y coma. Se ignoran lineas vacias.
+function leerReparto(texto){
+  const filas = [], errores = [];
+  texto.split(/\n+/).forEach((linea, i) => {
+    const l = linea.trim();
+    if(!l) return;
+    // Se saca la direccion con un patron y el RESTO es la cantidad. Partir por
+    // comas rompia los decimales en espanol: "1000,5" se leia como 1000.
+    const m = l.match(/^(0x[0-9a-fA-F]{40})[\s,;]*(.*)$/);
+    if(!m){
+      errores.push('Línea ' + (i+1) + ': dirección inválida'); return;
+    }
+    const dir = m[1], cant = num(m[2]);
+    if(!(cant > 0)){
+      errores.push('Línea ' + (i+1) + ': falta la cantidad'); return;
+    }
+    filas.push({ dir, cant });
+  });
+  return { filas, errores };
+}
+
+async function confirmarReparto(){
+  const t = S.actual; if(!t) return;
+  const btn = $('rpBtn'), err = $('rpErr');
+  const plazo = parseInt($('rpPlazo').value, 10);
+  const libre = S.saldoToken || 0;
+
+  err.classList.add('hidden');
+  const { filas, errores } = leerReparto($('rpLista').value || '');
+
+  if(errores.length){
+    err.innerHTML = errores.join('<br>'); err.classList.remove('hidden'); return;
+  }
+  if(!filas.length){
+    err.textContent = 'Escribe al menos una dirección con su cantidad';
+    err.classList.remove('hidden'); return;
+  }
+  const total = filas.reduce((a,f) => a + f.cant, 0);
+  if(total > libre){
+    err.textContent = 'Sumas ' + fmt(total,0) + ' pero solo tienes ' + fmt(libre,0) + ' ' + t.s;
+    err.classList.remove('hidden'); return;
+  }
+  // Un lote demasiado grande lo rechaza World App por limite de gas.
+  if(filas.length > 20){
+    err.textContent = 'Máximo 20 por vez. Divídelo en varias tandas.';
+    err.classList.remove('hidden'); return;
+  }
+
+  const etiqueta = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Repartiendo…';
+  try{
+    const txs = filas.map(f => ({
+      to: lc(GEK_LOCK),
+      data: encodeCall(FN.lBloquearPara.sig, FN.lBloquearPara.types,
+                       [t.dir, ethers.parseUnits(String(f.cant), 18), plazo, f.dir])
+    }));
+    const ok = await enviarTx(txs);
+    if(ok){
+      toast('🎁 ' + fmt(total,0) + ' ' + t.s + ' repartidos a ' + filas.length + ' wallet(s)');
+      cerrarHojas();
+      S.holders = null;
+      await cargarTokens();
+      abrirToken(t.s);
+    } else {
+      err.textContent = 'No se pudo repartir: ' + (S.ultimoError || 'sin detalle');
+      err.classList.remove('hidden');
+    }
+  }catch(e){
+    err.textContent = String(e.message || e);
+    err.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = etiqueta; }
+}
+
+// ---------- quemar tokens ----------
+// No hace falta que el token tenga funcion de quema: basta con mandarlos a una
+// direccion de la que nadie puede sacarlos. Como World App no deja llamar
+// direcciones dinamicas, la transferencia va por PERMIT2, que es fija: primero
+// se autoriza al propio usuario como gastador y despues se mueve.
+function abrirQuema(){
+  $('dMenu').classList.add('hidden');
+  const t = S.actual;
+  if(!t) return;
+  if(!S.conectado) return conectarWallet();
+
+  const libre = S.saldoToken || 0;
+  $('qmSim').textContent = '$' + t.s;
+  $('qmErr').classList.add('hidden');
+  $('qmCant').value = '';
+
+  if(libre <= 0){
+    $('qmInfo').textContent = 'No tienes ' + t.s + ' disponibles.';
+    $('qmBtn').disabled = true;
+  } else {
+    $('qmInfo').textContent = 'Disponibles: ' + fmt(libre, 0) + ' ' + t.s;
+    $('qmBtn').disabled = false;
+  }
+  $('qmChips').innerHTML = [25,50,75,100].map(v =>
+    `<button onclick="qmPorcentaje(${v})">${v}%</button>`).join('');
+  $('hojaQuemar').classList.remove('hidden');
+}
+
+function qmPorcentaje(v){
+  const libre = S.saldoToken || 0;
+  if(libre <= 0) return;
+  $('qmCant').value = String(Math.floor(libre * v / 100));
+}
+
+async function confirmarQuema(){
+  const t = S.actual; if(!t) return;
+  const btn = $('qmBtn'), err = $('qmErr');
+  const cant  = num($('qmCant').value);
+  const libre = S.saldoToken || 0;
+
+  err.classList.add('hidden');
+  if(!(cant > 0)){ err.textContent = 'Escribe cuántos quieres quemar';
+                   err.classList.remove('hidden'); return; }
+  if(cant > libre){ err.textContent = 'Solo tienes ' + fmt(libre,0) + ' ' + t.s;
+                    err.classList.remove('hidden'); return; }
+
+  const etiqueta = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Quemando…';
+  try{
+    const wei = ethers.parseUnits(String(cant), 18);
+    // Por el LOCK, no por Permit2: el lock ya esta registrado y tiene permiso
+    // permanente sobre todos los tokens, asi que no hay que dar de alta nada.
+    // Se acreditan a la direccion muerta, de la que nadie tiene la llave: el
+    // plazo da igual porque nadie va a poder reclamarlos nunca.
+    const ok = await enviarTx([
+      { to: lc(GEK_LOCK),
+        data: encodeCall(FN.lBloquearPara.sig, FN.lBloquearPara.types,
+                         [t.dir, wei, 5, DIR_QUEMA]) },
+    ]);
+    if(ok){
+      toast('🔥 ' + fmt(cant,0) + ' ' + t.s + ' quemados para siempre');
+      cerrarHojas();
+      S.holders = null;            // que se relea con la quema incluida
+      await cargarTokens();
+      abrirToken(t.s);
+    } else {
+      err.textContent = 'No se pudo quemar: ' + (S.ultimoError || 'sin detalle');
+      err.classList.remove('hidden');
+    }
+  }catch(e){
+    err.textContent = String(e.message || e);
+    err.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = etiqueta; }
+}
+
 // ---------- bloquear tokens que ya tienes ----------
 // El contrato lo permitia desde el principio; faltaba por donde pedirlo.
 // GekLock tiene permiso permanente sobre los GekToken, asi que no hace falta
@@ -3332,6 +3603,8 @@ function cerrarHojas(){
   const hd = $('hojaDestacar'); if(hd) hd.classList.add('hidden');
   const hp = $('hojaPerfil'); if(hp) hp.classList.add('hidden');
   const hb = $('hojaBloquear'); if(hb) hb.classList.add('hidden');
+  const hq = $('hojaQuemar'); if(hq) hq.classList.add('hidden');
+  const hr = $('hojaRepartir'); if(hr) hr.classList.add('hidden');
   $('hojaEnviar').classList.add('hidden');
 }
 // Comisiones que le dejaron sus tokens. No hay contador on-chain de esto, asi
