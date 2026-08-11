@@ -754,7 +754,7 @@ img.ava{object-fit:cover;display:block;
     </div>
     <button class="cta" id="tradeBtn" onclick="ejecutarTrade()">Comprar</button>
     <p class="nota" style="text-align:center;margin-top:10px">
-      .</p>
+      Contratos sin auditar. Compra solo lo que estés dispuesto a perder.</p>
     <div class="err-box hidden" id="tErr"></div>
   </div>
 </main>
@@ -840,7 +840,7 @@ img.ava{object-fit:cover;display:block;
     <button class="cta" id="crearBtn" onclick="crearToken()">Crear token</button>
     <div class="err-box hidden" id="cErr"></div>
     <div class="hint" style="margin-top:10px;text-align:center">
-      Todo se guarda en una sola firma. La imagen entra en tamaño reducido porque comparte transacción con la creación — desde la página del token la puedes reemplazar por una más nítida.
+   
     </div>
     <p class="nota">Lo que la app promete
       —techo de comisión del 2%, tu compra inicial en custodia— está escrito en el
@@ -1077,7 +1077,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b71';
+const BUILD = 'WL b72';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -1181,7 +1181,7 @@ const GEK_METADATA = "0xF44C823c7F6F3faEC65E4148f03750D145406204";
 // cadena, se pueden ver en Worldscan y quien tenga la direccion puede operarlos.
 // Solo dejan de aparecer en Explorar, en el carrusel y en las cifras de arriba.
 const OCULTOS = [
-  // "0x0000000000000000000000000000000000000000",
+  "0xDFe2a718eC92DdCc28eeC90ab8A632005a8d8Ae2",
 ].map(d => d.toLowerCase());
 
 // WorldLaunchDestacados, desplegado en el bloque 33412354
@@ -1371,7 +1371,9 @@ function fmt(n,d=2){
   if(n >= 1e9) return (n/1e9).toFixed(2)+'B';
   if(n >= 1e6) return (n/1e6).toFixed(2)+'M';
   if(n >= 1e3) return (n/1e3).toFixed(2)+'K';
-  if(n > 0 && n < 0.0001) return n.toExponential(2);
+  // Nada de notacion cientifica en pantalla: "1.72e-13" no lo lee nadie.
+  // Por debajo del umbral se muestra practicamente cero, que es lo que es.
+  if(n > 0 && n < 0.0001) return '~0';
   return n.toFixed(d);
 }
 function toast(msg,ms=3000){
@@ -2367,6 +2369,7 @@ async function _cargarTokens(){
         credLibre: credSaldo ? n18(credSaldo[0]) : 0,
         credBloq: credBloq ? n18(credBloq[0]) : 0,
         p: precio,
+        resT: (rt && Number(rt[0])) ? n18(rt[0]) : 0,   // reserva virtual de tokens
         ch: base > 0 && precio > 0 ? (precio/base - 1)*100 : 0,
         enCurva: enCurva ? n18(enCurva[0]) : 0,
         raised, target,
@@ -2803,26 +2806,68 @@ function setRango(id){
   if(S.actual) dibujarChart(S.actual);
 }
 
-// Serie de precios en el tiempo. Cada operacion da un precio real
-// (WLD movido / tokens movidos) y su momento sale del bloque.
+// Serie de precios en el tiempo.
+//
+// ANTES estaba mal y por eso el grafico parecia un tachon: se dibujaba el
+// precio MEDIO de cada operacion (WLD movido / tokens movidos). Ese precio
+// medio queda por encima del precio real en las compras y por debajo en las
+// ventas, por las comisiones y el propio deslizamiento. Resultado: dientes de
+// sierra aunque el precio casi no se moviera.
+//
+// AHORA se reconstruye el precio de la CURVA despues de cada operacion. Como
+// la curva mantiene Q x T constante, el precio es P = Q/T = k/T², asi que
+// basta con seguir la reserva de tokens hacia atras desde la de ahora:
+//   comprar saca tokens de la reserva  -> antes habia mas
+//   vender  devuelve tokens a la reserva -> antes habia menos
+// y despues P_i = P_ahora * (T_ahora / T_i)².
+//
+// Con esto una compra SIEMPRE sube la linea y una venta SIEMPRE la baja, en
+// proporcion a su tamano. Que es como se comporta de verdad.
 function serieDePrecios(t){
-  if(!S.ops || !S.ops.lista) return [];
+  if(!S.ops || !S.ops.lista || !t) return [];
   const ultimo = S.ops.ultimo || 0;
   const ahora  = Date.now();
   const cuando = b => ahora - (ultimo - b) * SEG_POR_BLOQUE * 1000;
 
-  const pts = S.ops.lista
-    .filter(o => o.tok > 0 && o.wld > 0)
-    .map(o => ({ ts: cuando(o.bloque), p: o.wld / o.tok, compra: o.compra }))
-    .sort((a,b) => a.ts - b.ts);
+  const ops = S.ops.lista
+    .filter(o => o.tok > 0)
+    .sort((a,b) => a.bloque - b.bloque);
+  if(!ops.length || !(t.p > 0)) return [];
 
-  // El precio de lanzamiento va al principio para que la linea arranque en el
-  // origen real de la curva y no en la primera compra.
-  if(_precioLanzamiento && pts.length){
-    pts.unshift({ ts: pts[0].ts - 60000, p: _precioLanzamiento, inicio: true });
+  // Sin la reserva no se puede reconstruir: se cae al metodo viejo antes que
+  // no mostrar nada.
+  if(!(t.resT > 0)){
+    const pts = ops.filter(o => o.wld > 0)
+      .map(o => ({ ts: cuando(o.bloque), p: o.wld / o.tok, compra: o.compra }));
+    if(pts.length && t.p > 0) pts.push({ ts: ahora, p: t.p, fin: true });
+    return pts;
   }
-  // Y el precio de AHORA al final, para que la linea llegue hasta el borde.
-  if(pts.length && t && t.p > 0) pts.push({ ts: ahora, p: t.p, fin: true });
+
+  // 1) reserva de tokens DESPUES de cada operacion, hacia atras desde ahora
+  const despues = new Array(ops.length);
+  let T = t.resT;
+  for(let i = ops.length - 1; i >= 0; i--){
+    despues[i] = T;
+    T = ops[i].compra ? T + ops[i].tok : T - ops[i].tok;
+  }
+  const Tinicial = T;   // reserva antes de la primera operacion
+
+  // 2) de reserva a precio
+  const precioDe = Tr => (Tr > 0 ? t.p * Math.pow(t.resT / Tr, 2) : 0);
+
+  const pts = ops.map((o,i) => ({
+    ts: cuando(o.bloque),
+    p:  precioDe(despues[i]),
+    compra: o.compra,
+  })).filter(x => isFinite(x.p) && x.p > 0);
+
+  // El precio de salida, para que la linea arranque donde arranco la curva
+  if(pts.length && Tinicial > 0){
+    const p0 = precioDe(Tinicial);
+    if(isFinite(p0) && p0 > 0) pts.unshift({ ts: pts[0].ts - 60000, p: p0, inicio: true });
+  }
+  // y el precio de ahora, para que llegue hasta el borde derecho
+  if(pts.length) pts.push({ ts: ahora, p: t.p, fin: true });
   return pts;
 }
 
