@@ -116,6 +116,56 @@ input,textarea,select{font-family:inherit;font-size:15px}
 .sec-hd .sp{flex:1}
 .sec-hd .link{font-size:12px;color:var(--lime);font-weight:700}
 
+/* ---------- tablero de lanzamientos ----------
+   La idea que ordena esta pantalla: no es un escaparate de tarjetas, es un
+   tablero de control. Filas densas, cifras en monoespaciada, jerarquia por
+   tipografia y no por cajas. Se lee de un vistazo como un panel de vuelos. */
+.tablero{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:0 14px 12px;
+  background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cifra{background:var(--panel);padding:11px 10px;text-align:center}
+.cifra b{display:block;font-family:var(--mono);font-size:17px;font-weight:700;
+  color:var(--text);letter-spacing:-.02em}
+.cifra span{display:block;margin-top:2px;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim)}
+
+.lanzar{display:flex;align-items:center;gap:12px;width:calc(100% - 28px);margin:0 14px 14px;
+  padding:14px 16px;border:0;border-radius:14px;cursor:pointer;text-align:left;
+  background:linear-gradient(100deg,var(--lime),var(--lime-2));
+  box-shadow:0 8px 24px rgba(47,123,255,.3)}
+.lanzar:active{transform:scale(.99)}
+.lz-ico{font-size:20px;line-height:1}
+.lz-txt{flex:1}
+.lz-txt b{display:block;color:#fff;font-size:15.5px;font-weight:800;letter-spacing:.01em}
+.lz-txt i{display:block;font-style:normal;font-size:11.5px;color:rgba(255,255,255,.78);
+  margin-top:1px}
+.lz-fl{color:rgba(255,255,255,.8);font-size:22px;line-height:1}
+
+/* filas del tablero */
+.board{display:flex;flex-direction:column;gap:1px;margin:0 14px;
+  background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fila{display:grid;grid-template-columns:22px 34px 1fr auto;gap:10px;align-items:center;
+  width:100%;padding:11px 12px 9px;background:var(--panel);border:0;cursor:pointer;
+  text-align:left;position:relative}
+.fila:active{background:var(--panel-2)}
+.fila .pos{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:center}
+.fila .ava{width:34px;height:34px;font-size:14px}
+.fila .id h3{margin:0;font-size:14.5px;font-weight:700;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fila .id .sub{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:1px}
+.fila .pr{text-align:right}
+.fila .pr .p{font-family:var(--mono);font-size:13px;color:var(--text)}
+.fila .pr .d{font-family:var(--mono);font-size:11px;margin-top:1px}
+/* barra de progreso a la curva: pegada al borde inferior de la fila */
+.fila .gauge{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.05)}
+.fila .gauge i{display:block;height:100%;background:var(--lime)}
+.fila.grad .gauge i{background:var(--green)}
+.fila .aviso{grid-column:1/-1;margin-top:6px;font-size:10.5px}
+
+.feat.solo{width:calc(100% - 28px);margin:0 14px;min-width:0}
+.puntos{display:flex;gap:5px;justify-content:center;margin-top:10px}
+.puntos i{width:5px;height:5px;border-radius:50%;background:var(--line);display:block}
+.puntos i.on{background:var(--lime);width:16px;border-radius:3px}
+
 /* ---------- destacados (carrusel) ---------- */
 .rail{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;
   scrollbar-width:none}
@@ -344,6 +394,19 @@ img.ava{object-fit:cover;display:block;
   font-family:var(--mono);font-size:13px;word-break:break-all;line-height:1.6;
   margin-bottom:12px;user-select:text;text-align:center}
 .hoja-x{width:100%;margin-top:12px;padding:12px;font-size:13px;color:var(--dim);font-weight:700}
+.hd-row{display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:wrap}
+.hd-row .sub{color:var(--dim);font-size:12px}
+/* direccion del contrato: se toca y se copia, como en las demas plataformas */
+.ca{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:7px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--dim);
+  font-family:var(--mono);font-size:10.5px;cursor:pointer}
+.ca:active{background:var(--line);color:var(--text)}
+.ca.hecho{color:var(--green);border-color:rgba(49,213,131,.4)}
+/* redes al lado de la imagen: iconos redondos, sin texto */
+.soc{display:flex;gap:6px;margin-top:8px}
+.soc button{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--lime);cursor:pointer}
+.soc button:active{background:var(--line)}
 .links{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
 .link-chip{padding:6px 13px;border-radius:999px;background:var(--panel-2);
   border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--lime)}
@@ -509,11 +572,19 @@ img.ava{object-fit:cover;display:block;
 
 <!-- ===================== EXPLORAR ===================== -->
 <main id="v-explorar">
-  <div class="chainbar">
-    <span class="live"><i></i>LIVE EN WORLDCHAIN</span>
-    <div class="sp"></div>
-    <button class="mk-token" onclick="ir('crear')">+ Crear token</button>
+  <!-- Tablero de control: tres cifras reales, no adornos. Reemplaza a la
+       insignia "LIVE EN WORLDCHAIN", que no decia nada. -->
+  <div class="tablero">
+    <div class="cifra"><b id="stTokens">—</b><span>lanzados</span></div>
+    <div class="cifra"><b id="stWld">—</b><span>WLD en curvas</span></div>
+    <div class="cifra"><b id="stGrad">—</b><span>graduados</span></div>
   </div>
+
+  <button class="lanzar" onclick="ir('crear')">
+    <span class="lz-ico">&#128640;</span>
+    <span class="lz-txt"><b>Lanzar un token</b><i>listo en una firma</i></span>
+    <span class="lz-fl">&rsaquo;</span>
+  </button>
 
   <div class="ticker">
     <div class="ticker-lbl">⚡ EN VIVO</div>
@@ -522,11 +593,12 @@ img.ava{object-fit:cover;display:block;
 
   <section class="sec">
     <div class="sec-hd">
-      <h2>🔥 Destacados</h2>
+      <h2>Destacado</h2>
       <div class="sp"></div>
       <span class="cnt" id="featCount"></span>
     </div>
-    <div class="rail" id="featRail"></div>
+    <div id="featRail"></div>
+    <div class="puntos" id="featDots"></div>
   </section>
 
   <div class="promo">
@@ -536,7 +608,7 @@ img.ava{object-fit:cover;display:block;
 
   <section class="sec">
     <div class="sec-hd">
-      <h2>En tendencia</h2>
+      <h2>Tablero</h2>
       <div class="sp"></div>
       <span class="cnt" id="listCount"></span>
     </div>
@@ -545,7 +617,7 @@ img.ava{object-fit:cover;display:block;
       <button class="tab" data-f="nuevos" onclick="setTab(this)">Nuevos</button>
       <button class="tab" data-f="graduados" onclick="setTab(this)">Graduados</button>
     </div>
-    <div id="lista"></div>
+    <div class="board" id="lista"></div>
   </section>
   <div style="height:20px"></div>
 </main>
@@ -558,7 +630,17 @@ img.ava{object-fit:cover;display:block;
       <span id="dAvaBox"></span>
       <div style="flex:1;min-width:0">
         <h1 id="dName">—</h1>
-        <div class="sub num" style="color:var(--dim);font-size:12px" id="dSym">—</div>
+        <div class="hd-row">
+          <span class="sub num" id="dSym">—</span>
+          <button class="ca" id="dCa" onclick="copiarContrato()">
+            <span id="dCaTxt">—</span>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none"
+                 stroke="currentColor" stroke-width="2.2">
+              <rect x="9" y="9" width="12" height="12" rx="2"/>
+              <path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          </button>
+        </div>
+        <div class="soc" id="dSoc"></div>
       </div>
     </div>
     <div class="dt-price">
@@ -583,7 +665,6 @@ img.ava{object-fit:cover;display:block;
     <p class="dt-desc hidden" id="dDesc"></p>
     <p class="dt-fee hidden" id="dFee"></p>
     <div class="riesgo hidden" id="dRiesgo"></div>
-    <div class="links hidden" id="dLinks"></div>
   </div>
   <div class="tabs2" id="dTabs">
     <button class="tab2 on" data-p="stats"   onclick="setPanel('stats')">Resumen</button>
@@ -673,7 +754,7 @@ img.ava{object-fit:cover;display:block;
     </div>
     <button class="cta" id="tradeBtn" onclick="ejecutarTrade()">Comprar</button>
     <p class="nota" style="text-align:center;margin-top:10px">
-      Contratos sin auditar. Compra solo lo que estés dispuesto a perder.</p>
+      .</p>
     <div class="err-box hidden" id="tErr"></div>
   </div>
 </main>
@@ -761,7 +842,7 @@ img.ava{object-fit:cover;display:block;
     <div class="hint" style="margin-top:10px;text-align:center">
       Todo se guarda en una sola firma. La imagen entra en tamaño reducido porque comparte transacción con la creación — desde la página del token la puedes reemplazar por una más nítida.
     </div>
-    <p class="nota">Contratos públicos y todavía sin auditar. Lo que la app promete
+    <p class="nota">Lo que la app promete
       —techo de comisión del 2%, tu compra inicial en custodia— está escrito en el
       contrato y cualquiera puede comprobarlo en la cadena.</p>
   </div>
@@ -841,6 +922,9 @@ img.ava{object-fit:cover;display:block;
     </div>
     <button class="edit-btn" onclick="analizarToken()">&#128269; Buscar sus pools</button>
     <div id="anaOut" class="diag hidden"></div>
+    <button class="edit-btn" onclick="listarTokens()" style="margin-top:10px">
+      &#128203; Ver direcciones de todos los tokens</button>
+    <div id="listOut" class="diag hidden"></div>
   </div>
   <div style="height:20px"></div>
       <button class="hoja-x" onclick="cerrarHojas()">Cerrar</button>
@@ -993,7 +1077,7 @@ img.ava{object-fit:cover;display:block;
    ================================================================== */
 // Marca de versión: sirve para saber de un vistazo si Vercel ya sirve el
 // archivo nuevo. Se muestra al pie del Perfil.
-const BUILD = 'WL b68';
+const BUILD = 'WL b71';
 
 // RPC con clave propia: el público limita eth_getLogs a 100 bloques, y sin eso
 // no se puede leer el historial de operaciones. La clave queda visible en este
@@ -1089,6 +1173,17 @@ const GEK_FACTORY  = "0xE467651bAFAF731535aB68463a51d45Ed98366A8";
 const GEK_METADATA = "0xF44C823c7F6F3faEC65E4148f03750D145406204";
 // Contrato de destacados. Mientras esté vacío, el botón "Destacar" sigue
 // mostrando "Pronto" y el carrusel se llena solo con los más activos.
+// Tokens que NO se muestran en la app: los de prueba que quedaron de cuando se
+// estaba armando esto. Pegar aqui la direccion del TOKEN (no la de la curva),
+// una por linea, entre comillas y con coma al final.
+//
+// OJO CON QUE ESTO NO ES: no los borra ni los apaga. Siguen existiendo en la
+// cadena, se pueden ver en Worldscan y quien tenga la direccion puede operarlos.
+// Solo dejan de aparecer en Explorar, en el carrusel y en las cifras de arriba.
+const OCULTOS = [
+  // "0x0000000000000000000000000000000000000000",
+].map(d => d.toLowerCase());
+
 // WorldLaunchDestacados, desplegado en el bloque 33412354
 const GEK_DESTACADOS = "0x9CDD9e7C453599A6D1DD47A5C81c9BD5bE6640FF";
 
@@ -2056,6 +2151,21 @@ const usd = v => (v >= 1000 ? '$' + fmt(v,2)
                : v > 0      ? '$' + v.toFixed(v < 0.01 ? 4 : 3)
                             : '$0.00');
 
+// Lista todos los tokens con su direccion, incluidos los ocultos, para poder
+// copiar la de un token de prueba y pegarla en OCULTOS.
+function listarTokens(){
+  const caja = $('listOut');
+  caja.classList.remove('hidden');
+  const t = S.tokens || [];
+  if(!t.length){ caja.textContent = 'todavia no hay tokens cargados'; return; }
+  caja.innerHTML = t.map((x,i) =>
+    (i+1) + '. <b>' + x.n + '</b> ($' + x.s + ')\n   ' + x.dir).join('\n\n')
+    + (OCULTOS.length
+        ? '\n\nocultos ahora mismo: ' + OCULTOS.length
+          + '\n' + OCULTOS.join('\n')
+        : '\n\nno hay ninguno oculto');
+}
+
 async function analizarToken(){
   const caja = $('anaOut');
   const dir  = ($('anaDir').value || '').trim();
@@ -2271,8 +2381,11 @@ async function _cargarTokens(){
   }));
 
   // un token sin nombre es una lectura fallida, no se muestra a medias
-  S.tokens = tokens.filter(t => t && t.n && t.s);
-  log('tokens leidos: ' + S.tokens.length);
+  const todos = tokens.filter(t => t && t.n && t.s);
+  S.tokens = todos.filter(t => !OCULTOS.includes(lc(t.dir)));
+  const escondidos = todos.length - S.tokens.length;
+  log('tokens leidos: ' + S.tokens.length
+      + (escondidos ? ' (' + escondidos + ' ocultos)' : ''));
 }
 
 // Avatar: la imagen real si existe, si no la inicial del símbolo
@@ -2441,9 +2554,17 @@ function pintarDestacados(){
 
   sec.classList.toggle('hidden', d.length === 0);
   $('featCount').textContent = d.length ? d.length + (d.length===1?' token':' tokens') : '';
-  if(!d.length) return;
+  const dots = $('featDots');
+  if(!d.length){ if(dots) dots.innerHTML = ''; return; }
   S._featAuto = auto;
-  $('featRail').innerHTML = d.map((t,i)=>{
+  S._feat = d;
+  // Una sola tarjeta a la vez, grande, en vez de un carril con medias tarjetas
+  // asomando. Los puntos de abajo dicen cuantas hay.
+  if(S._featIdx == null || S._featIdx >= d.length) S._featIdx = 0;
+  if(dots) dots.innerHTML = d.map((_,i) =>
+    `<i class="${i === S._featIdx ? 'on' : ''}" onclick="verDestacado(${i})"></i>`).join('');
+  $('featRail').innerHTML = [d[S._featIdx]].map((t)=>{
+    const i = S._featIdx;
     const h = Math.max(0, Math.floor((t.fin-Date.now())/3.6e6));
     const m = Math.max(0, Math.floor(((t.fin-Date.now())%3.6e6)/6e4));
     const auto = S._featAuto;
@@ -2451,7 +2572,7 @@ function pintarDestacados(){
     const pie = auto
       ? `<span class="cd">${t.raised > 0 ? fmt(t.raised)+' WLD recaudados' : 'sin operaciones aún'}</span>`
       : `<span class="cd">${h}h ${m}m` + (t.inv ? ` &middot; ${fmt(t.inv,0)} WLD` : '') + `</span>`;
-    return `<button class="feat" onclick="abrirToken('${t.s}')">
+    return `<button class="feat solo" onclick="abrirToken('${t.s}')">
       <span class="tag">${etiqueta}</span>
       <div class="feat-top">
         ${avatar(t)}
@@ -2466,6 +2587,33 @@ function pintarDestacados(){
       </div>
     </button>`;
   }).join('');
+}
+
+function verDestacado(i){
+  S._featIdx = i;
+  pintarDestacados();
+}
+
+// Rotacion automatica cada 6 s, solo si hay mas de uno y la pestana esta
+// visible: girar en segundo plano gasta bateria para nada.
+setInterval(() => {
+  if(S.vista !== 'explorar' || document.hidden) return;
+  const d = S._feat || [];
+  if(d.length < 2) return;
+  S._featIdx = ((S._featIdx || 0) + 1) % d.length;
+  pintarDestacados();
+}, 6000);
+
+// Las tres cifras de arriba salen de los datos que ya estan cargados: no
+// cuestan ni una consulta extra.
+function pintarTablero(){
+  const t = S.tokens || [];
+  const enCurvas = t.reduce((a,x) => a + (x.raised || 0), 0);
+  const grad = t.filter(x => x.grad).length;
+  const el = (id, v) => { const e = $(id); if(e) e.textContent = v; };
+  el('stTokens', t.length || '0');
+  el('stWld', enCurvas >= 1000 ? fmt(enCurvas/1000,1)+'K' : fmt(enCurvas,1));
+  el('stGrad', grad);
 }
 
 function pintarLista(){
@@ -2500,29 +2648,34 @@ function pintarLista(){
   if(!l.length){
     $('lista').innerHTML = `<div class="empty">
       <h3>Nada por aquí todavía</h3>
-      <p>${q ? 'Ningún token coincide con tu búsqueda.' : 'Sé el primero en lanzar uno.'}</p>
-      ${q ? '' : '<button class="cta" onclick="ir(\'crear\')">Crear el primer token</button>'}
+      <p>Sé el primero en lanzar uno.</p>
+      <button class="cta" onclick="ir('crear')">Crear el primer token</button>
     </div>`;
     return;
   }
-  $('lista').innerHTML = l.map(t=>`
-    <button class="tk ${t.grad?'grad':''}" onclick="abrirToken('${t.s}')">
-      <div class="tk-top">
-        ${avatar(t)}
-        <div class="tk-id">
-          <h3>${t.n}</h3>
-          <div class="sub">$${t.s}${t.desc ? ' · '+desempacarDesc(t.desc).d.slice(0,40) : ''}</div>
-        </div>
-        <div class="tk-pr">
-          <div class="p">${precioCorto(t.p)}</div>
-          <div class="d ${t.ch>=0?'up':'down'}">${t.ch>=0?'+':''}${t.ch.toFixed(1)}%</div>
-        </div>
+  // Filas de tablero: una linea por token, cifras alineadas en monoespaciada y
+  // el avance a la graduacion como una barra fina al pie de la fila. Densidad
+  // en vez de tarjetas, para que se lea como un panel y no como un catalogo.
+  $('lista').innerHTML = l.map((t,i)=>{
+    const pct = Math.min(100, (t.raised||0) / (t.target||1500) * 100);
+    const r = riesgoCreador(t);
+    return `
+    <button class="fila ${t.grad?'grad':''}" onclick="abrirToken('${t.s}')">
+      <span class="pos">${t.grad ? '&#10003;' : (i+1)}</span>
+      ${avatar(t)}
+      <div class="id">
+        <h3>${t.n}</h3>
+        <div class="sub">$${t.s} &middot; ${t.grad ? 'graduado'
+          : fmt(t.raised||0,1)+' / '+fmt(t.target||1500,0)+' WLD'}</div>
       </div>
-      ${tarjetaFuse(t)}
-      ${(() => { const r = riesgoCreador(t);
-        return r.nivel === 'ok' ? '' :
-          `<div class="riesgo mini ${r.nivel}">&#9888;&#65039; ${r.texto}</div>`; })()}
-    </button>`).join('');
+      <div class="pr">
+        <div class="p">${precioCorto(t.p)}</div>
+        <div class="d ${t.ch>=0?'up':'down'}">${t.ch>=0?'+':''}${t.ch.toFixed(1)}%</div>
+      </div>
+      ${r.nivel === 'ok' ? '' :
+        `<div class="riesgo mini ${r.nivel} aviso">&#9888;&#65039; ${r.texto}</div>`}
+      <span class="gauge"><i style="width:${t.grad?100:pct}%"></i></span>
+    </button>`;}).join('');
 }
 
 function setTab(btn){
@@ -2552,16 +2705,31 @@ function abrirToken(sym){
   rEl.innerHTML = (rg.nivel === 'ok' ? '&#128274; ' : '&#9888;&#65039; ') + rg.texto;
   rEl.classList.remove('hidden');
 
-  const ln = $('dLinks');
-  const enlaces = [];
-  if(info.tg) enlaces.push(['Telegram', info.tg]);
-  if(info.x)  enlaces.push(['X', info.x]);
-  if(info.w)  enlaces.push(['Web', info.w]);
-  ln.innerHTML = enlaces.map(([et,u]) => {
+  // Direccion del contrato, junto al simbolo y copiable de un toque.
+  $('dCaTxt').textContent = corto(t.dir);
+  $('dCa').classList.remove('hecho');
+
+  // Redes al lado de la imagen: un toque y va derecho a Telegram o X.
+  const ICONO = {
+    tg: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">'
+      + '<path d="M21.9 4.3 18.9 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.2.3-.5.5-1 .5'
+      + 'l.3-4.7 8.6-7.7c.4-.3-.1-.5-.6-.2L6.9 13.1 2.3 11.7c-1-.3-1-1 .2-1.5l18-6.9'
+      + 'c.8-.3 1.6.2 1.4 1z"/></svg>',
+    x:  '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">'
+      + '<path d="M17.5 3h3.1l-6.8 7.8L22 21h-6.3l-4.9-6.4L5.1 21H2l7.3-8.3L2 3h6.4'
+      + 'l4.4 5.9L17.5 3zm-1.1 16.1h1.7L7.7 4.8H5.9l10.5 14.3z"/></svg>',
+    w:  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"'
+      + ' stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>'
+      + '<path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>',
+  };
+  const NOMBRE = { tg:'Telegram', x:'X', w:'Sitio web' };
+  const soc = $('dSoc');
+  soc.innerHTML = ['tg','x','w'].filter(k => info[k]).map(k => {
+    const u = info[k];
     const url = /^https?:/.test(u) ? u : 'https://' + u;
-    return `<button class="link-chip" onclick="abrirEnlace('${url}')">${et}</button>`;
+    return `<button onclick="abrirEnlace('${url}')" aria-label="${NOMBRE[k]}"
+             title="${NOMBRE[k]}">${ICONO[k]}</button>`;
   }).join('');
-  ln.classList.toggle('hidden', !enlaces.length);
   // La comisión se muestra ANTES de comprar, no escondida en la letra chica.
   const cm = $('dFee');
   if(t.comision){
@@ -3206,6 +3374,33 @@ async function confirmarBloqueo(){
 function proximamente(q){
   $('dMenu').classList.add('hidden');
   toast(q + ' todavia no esta construido', 4000);
+}
+
+// Copiar la direccion del contrato. El portapapeles moderno falla en algunos
+// WebView, asi que hay un plan B con un campo de texto oculto.
+async function copiarContrato(){
+  const t = S.actual; if(!t) return;
+  const btn = $('dCa'), txt = $('dCaTxt');
+  const antes = txt.textContent;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(t.dir);
+    } else {
+      const c = document.createElement('textarea');
+      c.value = t.dir;
+      c.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(c); c.select();
+      document.execCommand('copy');
+      document.body.removeChild(c);
+    }
+    txt.textContent = 'copiado';
+    btn.classList.add('hecho');
+    setTimeout(() => { txt.textContent = antes; btn.classList.remove('hecho'); }, 1600);
+  }catch(e){
+    // Si ni asi se puede, al menos que la vea entera para copiarla a mano.
+    txt.textContent = t.dir;
+    toast('Mantén pulsado para copiar', 4000);
+  }
 }
 
 function abrirEditor(){
@@ -3909,7 +4104,7 @@ function pintarPerfil(){
    ARRANQUE
    ================================================================== */
 function renderTodo(){
-  pintarTicker(); pintarDestacados(); pintarLista();
+  pintarTicker(); pintarTablero(); pintarDestacados(); pintarLista();
   if(S.vista==='portafolio') pintarPerfil();
   if(S.vista==='portafolio') pintarPortafolio();
   if(S.vista==='crear') pintarTarifa();
